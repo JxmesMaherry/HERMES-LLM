@@ -8,7 +8,8 @@ Current password-based preview: **0.1.1**, 26 November 2026, Apple Silicon macOS
 | --- | --- |
 | Frontend tests | 10 passed, including in-app password creation/unlock, explicit saved-sign-in reset and confirmed local-account recovery |
 | Stress-tool tests | 7 passed for bounded concurrency, timeouts, private metrics and authenticated retrieval event checks |
-| Rust tests | 25 passed; one real-backend test ignored by default and executed separately |
+| Publication tests | 6 passed: checksum validation, draft-first uploads, upload/missing-asset failures, draft resumption and published-release protection |
+| Rust tests | 31 passed after final review; one real-backend test ignored by default and executed separately |
 | Encrypted vault | Round-trip persistence, wrong password, tampering, hostile KDF parameters, weak-password rejection, cached reads, backup-on-reset and preservation of fixture documents passed |
 | SQLite recovery | 4 Python tests passed: unchanged user/KB/chat identity, original database backup, safe administrator listing, and parameterised updates rejecting unknown/injected addresses |
 | Real password reset | Isolated Open WebUI v0.13.5 administrator recovered; sign-in with the new password succeeded; user ID and existing knowledge access were unchanged |
@@ -31,7 +32,7 @@ The earlier 0.1.0 implementation used Keychain, and its memory-cache change did 
 - Installation acceptance of the GitHub-built artifact on a clean Mac/account; tagged release publication.
 - Developer ID signing and notarization. Local builds are ad-hoc signed only.
 
-## Final 0.1.1 package
+## Initial 0.1.1 package, before final review
 
 The final Apple Silicon `.app` and DMG built successfully. Bundle verification confirmed the ARM64 executable, embedded frontend, bundled Compose definition and licence resources, ad-hoc signature integrity and valid DMG checksums. The package's Info.plist reports 0.1.1, and its bundled Compose message references the encrypted vault. The CLI helper returns `HERMES_VAULT_CLI_V1` without opening a window.
 
@@ -43,7 +44,7 @@ Local artifact: `.artifacts/HERMES-LLM_0.1.1_aarch64.dmg` (ignored by Git). SHA-
 d11619594616b4862c43783e3861c8e1b6fbf7d9b2e8ee58182dbc6fe0574a78
 ```
 
-The final test rerun passed 10 frontend, 7 stress-tool, 25 default Rust and 4 Python tests. Loopback mock-server tests required execution outside the filesystem/network sandbox; the sandboxed attempts failed to bind a port, then the same tests passed with that restriction lifted. The live recovery/RAG result above was run separately against the isolated backend.
+That test rerun passed 10 frontend, 7 stress-tool, 25 default Rust and 4 Python tests. Loopback mock-server tests required execution outside the filesystem/network sandbox; the sandboxed attempts failed to bind a port, then the same tests passed with that restriction lifted. The live recovery/RAG result above was run separately against the isolated backend.
 
 See PASSWORDS.md, TESTING.md and RELEASE.md for repeatable procedures.
 
@@ -64,3 +65,15 @@ c40912568de218a73d8a7e46c7996f6f18a287027e71fe89d4167e5051332b9a
 ```
 
 The locally built DMG checksum above and this hosted-build checksum identify separate packaging runs; byte-for-byte reproducible packaging is not claimed. The downloaded artifact was checked for integrity but was not installed over the owner's active application or represented as clean-Mac acceptance.
+
+## Final pre-publication review
+
+The review found and corrected incomplete stream handling, polling-based deadlines and publication before asset attachment. Native chat now requires a completion marker and non-empty answer; knowledge chat additionally requires an actual retrieval-source event. Model downloads require Ollama's explicit success status. Startup and indexing deadlines include time spent waiting on HTTP requests. Vault loading rejects non-regular files and bounds password input.
+
+Release workflows now use pinned Action commits and call the full CI suite before packaging. The publisher verifies the attached checksum locally, uploads both files to a draft, confirms the attachment names and only then publishes. Draft retries can replace their attachments; published releases are left untouched. Versions beginning with 0 are marked as prereleases. The six mocked publication tests do not make remote mutations.
+
+Local final-review results: 10 frontend tests, 7 stress tests, 6 publication tests, 31 Rust tests and 4 Python tests passed, along with formatting, lint, strict types, production frontend build, Clippy and fresh dependency audits. npm reported zero vulnerabilities. RustSec retained the same three documented warnings; `cargo tree --target aarch64-apple-darwin` showed no `chrono` or `glib` dependency in this target.
+
+The live native recovery/RAG/sync test passed again against isolated project `hermes-acceptance-e5ae95cd`, using only invented fixtures. Its container was stopped and its volume retained. Real password recovery, subsequent sign-in, identity/knowledge preservation, retrieval sources, unchanged/modified sync and declined/confirmed cleanup passed. Production textbooks and account credentials were not changed.
+
+The final publishing path is documented in [PUBLISHING-v0.1.1.md](PUBLISHING-v0.1.1.md). Notarization, clean-Mac acceptance and the other manual cases above remain explicit limits on the preview.

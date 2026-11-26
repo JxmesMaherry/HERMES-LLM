@@ -2,7 +2,9 @@
 
 ## Automated checks
 
-Frontend tests exercise prerequisite failure states, blocked setup, explicit deletion consent, chat streaming/history and offline send controls. Rust tests cover settings validation and persistence, command errors, filtering, SHA-256, symlink containment, missing roots, preview expiration, unchanged files, processing failure and safe cleanup.
+Frontend tests exercise prerequisite failure states, blocked setup, explicit deletion consent, chat streaming/history and offline send controls. Rust tests cover settings validation and persistence, command errors, filtering, SHA-256, symlink containment, missing roots, preview expiration, unchanged files, processing failure and safe cleanup. Stream tests reject truncated/empty answers, knowledge responses without retrieval sources and incomplete model downloads. Slow mock HTTP requests verify wall-clock startup/indexing deadlines.
+
+`npm test` also runs six publication tests with a fake `gh` executable. These verify upload-before-publication, failed/missing uploads, checksum failure, draft resumption and refusal to overwrite published releases. They never publish to GitHub.
 
 Run the commands in DEVELOPMENT.md. A real backend and model are not needed for the default unit/contract suite; HTTP mocks bind ephemeral loopback sockets. The live test is ignored by default.
 

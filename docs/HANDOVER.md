@@ -24,16 +24,18 @@ infra/docker/
   compose.yaml, .env.example
 scripts/
   stress-test.mjs, vault-reader.mjs
+  publish-release.sh
   bootstrap.sh, doctor.sh, start.sh, stop.sh, logs.sh, common.sh
   integration.mjs, check-version.mjs, third-party-notices.mjs, verify-bundle.sh
 tests/fixtures/hermes-facts.md, tests/stress.test.mjs, tests/stress-cases.example.json
-tests/test_account_recovery.py
+tests/test_account_recovery.py, tests/release.test.mjs
 docs/
   ARCHITECTURE.md, INSTALLATION.md, DEVELOPMENT.md, SECURITY.md
   TROUBLESHOOTING.md, RELEASE.md, RELEASE-NOTES.md, TESTING.md
   THIRD-PARTY.md, THIRD-PARTY-LICENSES.txt, upstream-licenses/
   VERIFICATION.md, HANDOVER.md, QUICKSTART.md, HARDWARE.md
   STRESS-TESTING.md, USER-GUIDE.md, PASSWORDS.md
+  PUBLISHING-v0.1.1.md
 README.md, LICENSE, .gitignore, package.json, package-lock.json, rust-toolchain.toml
 ```
 
@@ -84,7 +86,7 @@ DMG output: `apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/d
 
 ## Results and limits
 
-See VERIFICATION.md for exact executed checks: frontend build/lint/typecheck, 10 frontend tests, 7 stress-tool contract tests, 25 default Rust tests, a separately passed real chat/RAG/sync test, Compose validation, native launch and local `.app`/DMG generation. npm audit reported no vulnerabilities; RustSec exited 0 with three upstream warnings.
+See VERIFICATION.md for exact executed checks: frontend build/lint/typecheck, 10 frontend tests, 7 stress-tool contract tests, 6 publication tests, 31 default Rust tests, 4 Python recovery tests, a separately passed real chat/RAG/sync test, Compose validation, native launch and `.app`/DMG generation. npm audit reported no vulnerabilities; RustSec exited 0 with three upstream warnings.
 
 GitHub CI and the build-only release workflow have passed; see VERIFICATION.md for links and the downloaded artifact checksum. CLI tools use the password-protected Rust helper; Keychain is no longer used. The app is ad-hoc signed, not notarized. Desktop and Open WebUI browser chat histories are separate. Sync is manual, OCR is not bundled, empty directories are deliberately retained, and concurrent upstream edits are not an atomic transaction. A crash after upload but before cleanup may require inspection/retry. Limits are 5,000 documents, 20,000 entries, and a configurable maximum of 50 MB per document.
 
