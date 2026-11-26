@@ -48,7 +48,11 @@ jobs:
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: HERMES-LLM-macOS-aarch64
-          path: .artifacts/*
+          path: |
+            .artifacts/HERMES-LLM_*_aarch64.dmg
+            .artifacts/SHA256SUMS.txt
+          # The staging directory is hidden; upload only these two distribution files.
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
   publish:
