@@ -73,3 +73,8 @@ export interface StreamEvent {
   error?: unknown;
 }
 export type Page = "dashboard" | "chat" | "knowledge" | "settings" | "setup";
+
+export interface VaultStatus {
+  exists: boolean;
+  unlocked: boolean;
+}

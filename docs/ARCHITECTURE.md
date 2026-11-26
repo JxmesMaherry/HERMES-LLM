@@ -12,7 +12,7 @@ HERMES is a macOS desktop client with a separately managed local backend.
 ## Native modules
 
 - `config.rs`: validated preferences and atomic mode-0600 writes.
-- `credentials.rs`: a single protected Keychain vault, silent startup restoration, explicit unlock and session caching.
+- `credentials.rs`: an Argon2id/XChaCha20-Poly1305 encrypted local vault, user-chosen HERMES password and session caching.
 - `services.rs`: known Docker binary paths, daemon checks, explicit command arguments, lifecycle and readiness timeouts.
 - `api.rs`: authenticated Open WebUI calls, local Ollama model management, chat SSE decoder and history validation.
 - `sync.rs`: bounded filesystem scan, capability-relative document access, manifests, upstream diff, asynchronous processing and cleanup.
@@ -54,7 +54,7 @@ The app does not delete empty directories: upstream directory cleanup can remove
 
 Application data: `~/Library/Application Support/com.jxmesmaherry.hermesllm/`. Files include `config.json`, copied `compose.yaml`, `conversations.json`, `sync-attempt.json`, and `sync-success.json`. User data is never written inside the installed `.app` or repository.
 
-Keychain service: `com.jxmesmaherry.hermesllm`; active account: `workspace-credentials-v1`. It holds the unchanged backend secret and per-port sessions together. Legacy `backend-secret` and `webui-token-<port>` entries are retained during migration. No API key or password is stored in JSON. Open WebUI stores its own data in `hermes-llm-open-webui-data`.
+Credentials are encrypted in `credentials.vault` in the application data directory. The user chooses a HERMES password; no macOS Keychain API is called. The existing backend secret can be recovered from the labelled managed container without changing it. Per-port sessions are encrypted alongside it. Plain preferences contain no passwords or API tokens. Open WebUI stores its own data in `hermes-llm-open-webui-data`.
 
 Closing HERMES leaves services running. Explicit Stop uses `docker compose stop`; it does not call `down -v`, prune, remove models or delete documents. Restart recreates only the managed backend container with current settings and the same volume. Focus and 30-second status checks recover after sleep without automatically restarting failed services.
 
@@ -65,8 +65,8 @@ Closing HERMES leaves services running. Explicit Stop uses `docker compose stop`
 - Pinned source: [knowledge router](https://github.com/open-webui/open-webui/blob/v0.13.5/backend/open_webui/routers/knowledge.py), [files router](https://github.com/open-webui/open-webui/blob/v0.13.5/backend/open_webui/routers/files.py), [chat middleware](https://github.com/open-webui/open-webui/blob/v0.13.5/backend/open_webui/utils/middleware.py), [authentication](https://github.com/open-webui/open-webui/blob/v0.13.5/backend/open_webui/routers/auths.py).
 - [Official oikb reference client](https://github.com/open-webui/oikb), [Ollama API](https://docs.ollama.com/api).
 
-## Credential unlock behaviour
+## Password and account recovery
 
-Startup performs one noninteractive lookup using macOS `kSecUseAuthenticationUISkip`; protected entries remain locked without a dialog. An explicit Unlock action (or explicit first backend start/sign-in) loads the single vault once. Health checks, focus polling, model/chat/knowledge API requests and stop/log operations never open Keychain. Denial is not retried automatically. Cached credentials live only in Rust memory until the app exits.
+Startup only checks whether the encrypted vault exists. An in-app password form creates/unlocks it once per session; all background checks read only cached state. Wrong passwords and damaged ciphertext never overwrite the vault. Explicit saved-sign-in reset makes an encrypted backup and preserves source documents and backend data. The CLI helper reads a password via stdin before Tauri starts and never calls Keychain.
 
-For an existing running HERMES backend, migration reads its unchanged backend secret from the labelled container without logging it, and imports the old session through one deliberate Keychain access. If the backend is stopped, migration preserves the legacy backend secret and imports the old session only when it is readable without another prompt; a one-time local Open WebUI sign-in may then be needed. No volume, book, chat or backend secret is reset.
+A narrowly scoped Docker helper lists local administrators and backs up SQLite before invoking Open WebUI's own password-update method for the selected account. Its password is passed on stdin, never argv or logs. The account ID and its knowledge/chat ownership remain unchanged. See [password recovery](PASSWORDS.md) for scope and operator trust assumptions.

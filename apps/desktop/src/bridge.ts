@@ -1,5 +1,6 @@
 import { invoke, Channel, isTauri } from "@tauri-apps/api/core";
 import type {
+  VaultStatus,
   Config,
   Health,
   Model,
@@ -21,7 +22,26 @@ const call = <T>(command: string, args?: Record<string, unknown>) => {
   return invoke<T>(command, args);
 };
 export const bridge = {
-  unlock: () => call<void>("unlock_credentials"),
+  unlock: (password: string) => call<void>("unlock_credentials", { password }),
+  credentialStatus: () => call<VaultStatus>("credential_status"),
+  createCredentials: (password: string, confirmation: string, reset: boolean) =>
+    call<void>("create_credentials", { password, confirmation, reset }),
+  recoveryAccounts: () =>
+    call<{ accounts: { id: string; name: string; email: string }[] }>(
+      "recovery_accounts",
+    ),
+  resetLocalAccount: (
+    email: string,
+    password: string,
+    confirmation: string,
+    confirmed: boolean,
+  ) =>
+    call<void>("reset_local_account", {
+      email,
+      password,
+      confirmation,
+      confirmed,
+    }),
   config: () => call<Config>("get_config"),
   save: (settings: Config) => call<Config>("save_config", { settings }),
   health: () => call<Health>("health"),

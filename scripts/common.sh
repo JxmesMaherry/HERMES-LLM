@@ -25,23 +25,7 @@ load_config() {
   export HERMES_PORT HERMES_HF_OFFLINE
 }
 load_secret() {
-  [ "$(uname -s)" = Darwin ] || fail 'The source scripts currently require macOS Keychain.'
-  if keychain_payload="$(/usr/bin/security find-generic-password -s com.jxmesmaherry.hermesllm -a workspace-credentials-v1 -w 2>/dev/null)"; then
-    WEBUI_SECRET_KEY="$(node -e 'let input="";process.stdin.on("data",c=>input+=c);process.stdin.on("end",()=>{try{const value=JSON.parse(input).backend_secret;if(typeof value!=="string"||value.length<24)throw new Error();process.stdout.write(value);}catch{process.exit(1);}})' <<< "$keychain_payload")" || fail 'Saved credentials could not be read; nothing was replaced.'
-    unset keychain_payload
-    export WEBUI_SECRET_KEY
-    return
-  else
-    keychain_status=$?
-    [ "$keychain_status" -eq 44 ] || fail 'Keychain access was denied. Allow the trusted security helper when ready, then rerun this command.'
-  fi
-  if WEBUI_SECRET_KEY="$(/usr/bin/security find-generic-password -s com.jxmesmaherry.hermesllm -a backend-secret -w 2>/dev/null)"; then :
-  else
-    keychain_status=$?
-    [ "$keychain_status" -eq 44 ] || fail 'Keychain access was denied or unavailable. Unlock the login Keychain and allow the trusted /usr/bin/security request, then retry.'
-    WEBUI_SECRET_KEY="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
-    /usr/bin/security add-generic-password -s com.jxmesmaherry.hermesllm -a backend-secret -w "$WEBUI_SECRET_KEY" >/dev/null || fail 'Unlock your login Keychain and retry.'
-  fi
+  WEBUI_SECRET_KEY="$(node "$REPO_DIR/scripts/vault-reader.mjs" backend-secret "$CONFIG_DIR" "$HERMES_PORT")" || fail 'Could not unlock HERMES credentials. Open HERMES to create/reset your own password.'
   export WEBUI_SECRET_KEY
 }
 compose() { "$DOCKER_BIN" compose --project-name hermes-llm --file "$CONFIG_DIR/compose.yaml" "$@"; }

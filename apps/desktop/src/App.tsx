@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   BookOpen,
   ChevronRight,
@@ -16,7 +16,10 @@ import Chat from "./Chat";
 import Knowledge from "./Knowledge";
 import Settings from "./Settings";
 import Setup from "./Setup";
+import { version } from "../package.json";
+import PasswordDialog from "./PasswordDialog";
 import type {
+  VaultStatus,
   Config,
   Health,
   Model,
@@ -25,6 +28,12 @@ import type {
   SyncState,
 } from "./types";
 export default function App() {
+  const [vaultStatus, setVaultStatus] = useState<VaultStatus>({
+    exists: false,
+    unlocked: false,
+  });
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const offeredPassword = useRef(false);
   const [config, setConfig] = useState<Config | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
   const [models, setModels] = useState<Model[]>([]);
@@ -41,7 +50,11 @@ export default function App() {
   const refresh = useMemo(
     () =>
       singleFlight(async () => {
-        const h = await bridge.health();
+        const [h, status] = await Promise.all([
+          bridge.health(),
+          bridge.credentialStatus(),
+        ]);
+        setVaultStatus(status);
         setHealth(h);
         if (h.ollama.state === "running") setModels(await bridge.models());
         else setModels([]);
@@ -50,6 +63,17 @@ export default function App() {
       }),
     [],
   );
+  useEffect(() => {
+    if (
+      health &&
+      !health.credentials_unlocked &&
+      (vaultStatus.exists || health.docker.state === "running") &&
+      !offeredPassword.current
+    ) {
+      offeredPassword.current = true;
+      setPasswordOpen(true);
+    }
+  }, [health, vaultStatus.exists]);
   useEffect(() => {
     let current = true;
     void bridge
@@ -170,7 +194,7 @@ export default function App() {
               <span>Under your control.</span>
             </div>
           </div>
-          <span className="version">HERMES-LLM · v0.1.0</span>
+          <span className="version">HERMES-LLM · v{version}</span>
         </div>
       </aside>
       <main>
@@ -198,22 +222,28 @@ export default function App() {
           <div className="credential-banner" role="status">
             <ShieldCheck size={18} />
             <span>
-              Saved credentials are locked. Unlock once to use them for this
-              session. Background checks never open Keychain prompts.
+              {vaultStatus.exists
+                ? "Unlock HERMES with the password you chose in the app."
+                : "Choose your HERMES password to protect saved local sign-ins. No Keychain access is used."}
             </span>
             <Button
               secondary
               disabled={!!busy}
-              onClick={() =>
-                void run("Unlocking saved credentials…", async () => {
-                  await bridge.unlock();
-                  await refresh();
-                })
-              }
+              onClick={() => setPasswordOpen(true)}
             >
-              Unlock credentials
+              {vaultStatus.exists ? "Unlock HERMES" : "Set HERMES password"}
             </Button>
           </div>
+        )}
+        {passwordOpen && (
+          <PasswordDialog
+            status={vaultStatus}
+            onClose={() => setPasswordOpen(false)}
+            onDone={async () => {
+              await refresh();
+              if (config?.setup_complete) setPage("settings");
+            }}
+          />
         )}
         {error && (
           <div role="alert" className="error-banner">

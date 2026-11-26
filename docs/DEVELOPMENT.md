@@ -1,6 +1,6 @@
 # Development
 
-Install Node 22.12+ (24 recommended), Rust stable, Apple Command Line Tools, Docker Desktop and Ollama. Full Xcode may be needed for signing/distribution features on some systems. No system dependency is installed by HERMES scripts.
+Install Node 22.12+ (24 recommended), Rust stable, Apple Command Line Tools, Python 3 (for recovery tests), Docker Desktop and Ollama. Full Xcode may be needed for signing/distribution features on some systems. No system dependency is installed by HERMES scripts.
 
 ```sh
 npm ci
@@ -45,3 +45,5 @@ Only macOS bundle assets need to be retained. Keep dependencies local to the pro
 ## Local load and textbook tests
 
 Run `node scripts/stress-test.mjs --help` for the bounded API runner. `npm test` also executes its seven Node contract tests with loopback mocks. Follow STRESS-TESTING.md for authenticated knowledge requests, monitoring, per-book expected facts and metric-only reports. The stress tool is a source development tool; it is not bundled as an additional runtime in the DMG.
+
+Run `python3 -m unittest discover -s tests -p 'test_*.py'` to verify recovery database/data invariants. Source CLI credential access uses `scripts/vault-reader.mjs` and the built Rust helper; it asks for the chosen HERMES password and never accesses Keychain.

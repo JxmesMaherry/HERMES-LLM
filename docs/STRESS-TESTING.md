@@ -24,7 +24,7 @@ node scripts/stress-test.mjs --target ollama --requests 3 --dry-run
 node scripts/stress-test.mjs --knowledge --requests 3 --dry-run
 ```
 
-Dry-run makes no network requests and reads no Keychain credentials. It reports model, endpoint, context, request count and case IDs. The knowledge test uses the KB currently selected in HERMES Settings. It never automatically chooses a different KB.
+Dry-run makes no network requests and asks for no password. It reports model, endpoint, context, request count and case IDs. The knowledge test uses the KB currently selected in HERMES Settings. It never automatically chooses a different KB.
 
 ## 3. Measure Ollama alone
 
@@ -61,7 +61,7 @@ Concurrent HTTP clients may be queued by Ollama. The script does not change `OLL
 
 ## Authentication
 
-The default is the HERMES session inside the protected `workspace-credentials-v1` Keychain entry. The runner falls back to `webui-token-<port>` only for a legacy installation with no unified vault. macOS can ask whether to allow the trusted `/usr/bin/security` helper to read that entry. The lookup times out after 15 seconds instead of waiting indefinitely. Denied access changes no secret.
+The default is the session inside HERMES's encrypted local vault. The runner asks once in Terminal for **the HERMES password you chose**, using hidden input. The Rust helper decrypts the credential vault for this invocation. No Keychain or Mac password is requested. Create the password and connect your account in the app first. See [passwords](PASSWORDS.md).
 
 If you prefer a temporary token, obtain a **local Open WebUI** API key from its Account settings (administrator API-key settings may need enabling). In the standard macOS zsh shell:
 

@@ -19,7 +19,7 @@ HERMES is a Tauri 2 desktop application that connects native Ollama to a local, 
 - macOS folder picker, PDF/TXT/Markdown filtering, SHA-256 incremental sync, processing status and progress.
 - Create/select knowledge bases; preview additions, modifications and deletions; preserve deleted source entries unless explicitly confirmed.
 - Native knowledge chat using Open WebUI retrieval, plus a local Open WebUI browser option.
-- Persistent preferences, light/dark themes, Keychain sessions and backend secret.
+- Persistent preferences, light/dark themes, encrypted local sessions and backend secret.
 - CI checks and a macOS `.app`/DMG workflow.
 
 For the scope and remaining manual checks, read [verification](VERIFICATION.md) and [the integration test plan](TESTING.md).
@@ -31,7 +31,7 @@ flowchart LR
   UI[React desktop interface] --> Rust[Tauri / Rust]
   Rust -->|authenticated localhost API| OW[Open WebUI / Docker]
   Rust -->|native picker / bounded scan| Docs[Selected document folder]
-  Rust --> Keychain[macOS Keychain]
+  Rust --> Vault[Password-encrypted local vault]
   OW -->|host.docker.internal| Ollama[Native Ollama / Metal]
   OW --> Volume[Persistent local Docker volume]
 ```
@@ -82,7 +82,7 @@ npm run desktop
 ./scripts/stop.sh
 ```
 
-The scripts and app use the same project `hermes-llm`, volume `hermes-llm-open-webui-data`, Keychain secret and application configuration. Scripts work from any current directory and preserve existing preferences. `HERMES_CONFIG_DIR` can isolate CLI development configuration, but does not change the production Compose project/volume identity.
+The scripts and app use the same project `hermes-llm`, volume `hermes-llm-open-webui-data`, encrypted credential vault and application configuration. Scripts work from any current directory and preserve existing preferences. `HERMES_CONFIG_DIR` can isolate CLI development configuration, but does not change the production Compose project/volume identity.
 
 `npm run dev` runs only the frontend in a browser. Native commands are deliberately unavailable there; use `npm run desktop` for a functioning application.
 

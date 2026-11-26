@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import App from "./App";
+import PasswordDialog from "./PasswordDialog";
+import AccountRecovery from "./AccountRecovery";
 import Dashboard from "./Dashboard";
 import Setup, { type Controls } from "./Setup";
 import Knowledge from "./Knowledge";
@@ -14,6 +16,12 @@ vi.mock("./bridge", async () => {
     bridge: {
       ...actual.bridge,
       config: vi.fn(),
+      credentialStatus: vi.fn(async () => ({ exists: true, unlocked: false })),
+      createCredentials: vi.fn(async () => {}),
+      recoveryAccounts: vi.fn(async () => ({
+        accounts: [{ id: "owner", name: "Owner", email: "owner@example.test" }],
+      })),
+      resetLocalAccount: vi.fn(async () => {}),
       health: vi.fn(),
       models: vi.fn(async () => []),
       knowledge: vi.fn(async () => []),
@@ -171,7 +179,7 @@ describe("chat integration", () => {
   });
 });
 
-it("does not unlock Keychain on render or repeated background refreshes", async () => {
+it("waits for a user-entered HERMES password and never unlocks on refresh", async () => {
   vi.mocked(bridge.config).mockResolvedValue({
     ...config,
     setup_complete: true,
@@ -182,12 +190,117 @@ it("does not unlock Keychain on render or repeated background refreshes", async 
   });
   render(<App />);
   const unlock = await screen.findByRole("button", {
-    name: "Unlock credentials",
+    name: "Unlock HERMES",
   });
   expect(bridge.unlock).not.toHaveBeenCalled();
   fireEvent(window, new Event("focus"));
   await waitFor(() => expect(bridge.health).toHaveBeenCalledTimes(2));
   expect(bridge.unlock).not.toHaveBeenCalled();
   fireEvent.click(unlock);
-  await waitFor(() => expect(bridge.unlock).toHaveBeenCalledTimes(1));
+  expect(bridge.unlock).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("HERMES password"), {
+    target: { value: "a known HERMES password" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Unlock for this session" }),
+  );
+  await waitFor(() =>
+    expect(bridge.unlock).toHaveBeenCalledWith("a known HERMES password"),
+  );
+});
+
+it("creates an encrypted-vault password only after matching confirmation", async () => {
+  const done = vi.fn(async () => {});
+  render(
+    <PasswordDialog
+      status={{ exists: false, unlocked: false }}
+      onClose={vi.fn()}
+      onDone={done}
+    />,
+  );
+  // Recovery must remain reachable if the old vault/container is missing but data remains.
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Recover an existing setup? Reset saved sign-ins",
+    }),
+  );
+  expect(screen.getByRole("checkbox")).not.toBeChecked();
+  expect(
+    screen.getByRole("button", { name: "Save HERMES password" }),
+  ).toBeDisabled();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Back to password setup" }),
+  );
+  fireEvent.change(screen.getByLabelText("New HERMES password"), {
+    target: { value: "my new known password" },
+  });
+  expect(
+    screen.getByRole("button", { name: "Save HERMES password" }),
+  ).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Confirm new HERMES password"), {
+    target: { value: "my new known password" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save HERMES password" }));
+  await waitFor(() =>
+    expect(bridge.createCredentials).toHaveBeenCalledWith(
+      "my new known password",
+      "my new known password",
+      false,
+    ),
+  );
+});
+it("requires explicit consent before resetting saved sign-ins", () => {
+  render(
+    <PasswordDialog
+      status={{ exists: true, unlocked: false }}
+      onClose={vi.fn()}
+      onDone={vi.fn()}
+    />,
+  );
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Forgot your HERMES password? Reset saved sign-ins",
+    }),
+  );
+  fireEvent.change(screen.getByLabelText("New HERMES password"), {
+    target: { value: "another known password" },
+  });
+  fireEvent.change(screen.getByLabelText("Confirm new HERMES password"), {
+    target: { value: "another known password" },
+  });
+  expect(
+    screen.getByRole("button", { name: "Save HERMES password" }),
+  ).toBeDisabled();
+  fireEvent.click(screen.getByRole("checkbox"));
+  expect(
+    screen.getByRole("button", { name: "Save HERMES password" }),
+  ).toBeEnabled();
+});
+it("recovers only the selected local account after explicit confirmation", async () => {
+  render(<AccountRecovery onDone={vi.fn(async () => {})} />);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Forgot your local account password?" }),
+  );
+  await screen.findByRole("option", { name: "Owner · owner@example.test" });
+  fireEvent.change(screen.getByLabelText("New local account password"), {
+    target: { value: "my known account password" },
+  });
+  fireEvent.change(screen.getByLabelText("Confirm new password"), {
+    target: { value: "my known account password" },
+  });
+  expect(
+    screen.getByRole("button", { name: "Reset password and sign in" }),
+  ).toBeDisabled();
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Reset password and sign in" }),
+  );
+  await waitFor(() =>
+    expect(bridge.resetLocalAccount).toHaveBeenCalledWith(
+      "owner@example.test",
+      "my known account password",
+      "my known account password",
+      true,
+    ),
+  );
 });

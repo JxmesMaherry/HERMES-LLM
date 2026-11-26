@@ -12,7 +12,7 @@ Development DMGs are ad-hoc signed and not notarized. macOS may require an expli
 
 1. Use **Setup guide → Check your Mac**. Missing, stopped and failed services have different statuses.
 2. In **Connect the backend**, allow embedding downloads if needed, and click **Start local backend**. This action may download Open WebUI’s official image. First launch can take several minutes. A bounded timeout shows an error instead of claiming readiness.
-3. Create the first local administrator account, or sign in to an existing one. This is an account in your local Open WebUI, not a paid cloud service. HERMES stores its session in Keychain and discards the password after use.
+3. Create the first local administrator account, or sign in to an existing one. This is an account in your local Open WebUI, not a paid cloud service. HERMES encrypts its saved session using the HERMES password you choose.
 4. Select an installed Ollama model. To download one, expand **Download a model**, review the model name and click the explicit internet download button.
 5. Choose a dedicated document folder with the macOS picker. Create a KB or select one you can write to.
 6. Finish setup, open **Library**, preview changes and sync. Watch for failed processing.
@@ -26,4 +26,5 @@ The project and volume identities stay stable. Stop the backend before replacing
 
 The app requires its pinned backend API version. Reusing a different Open WebUI installation is not supported as a substitute for the managed service. Settings exposes the local port and original Open WebUI interface for inspection.
 
-If saved credentials are locked, click **Unlock credentials** once. HERMES keeps them in memory for the session and does not ask again during background checks or chat. A changed ad-hoc build can need fresh macOS approval. Your documents and backend data remain intact.
+
+First choose a HERMES password in the app (at least 12 characters). It is not your Mac password. For a forgotten local account password, use the Settings recovery flow described in [PASSWORDS.md](PASSWORDS.md); books and chats are preserved.

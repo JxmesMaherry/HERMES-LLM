@@ -24,6 +24,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Account recovery data preservation
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
       - run: npm run build
       - run: npm audit --audit-level=high
       - name: Validate shell scripts

@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { execFileSync } from "node:child_process";
+import { readVaultValue } from "./vault-reader.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const defaultConfig = join(
@@ -29,9 +29,9 @@ const HELP = `HERMES local stress test (Node.js 22.12+)
   --cases FILE           JSON array of {id,prompt,expected?}; expected is an optional exact phrase
   --output FILE          Write metrics only, no prompts, answers, source names or credentials
   --show-answers         Print generated answers locally; may contain private book excerpts
-  --dry-run              Show plan; no network requests or Keychain access
+  --dry-run              Show plan; no network requests or password prompts
   --help                 Show help
-Authentication: reads the HERMES session from macOS Keychain (may prompt).
+Authentication: unlocks the local encrypted vault with your HERMES password.
 Alternative: HERMES_STRESS_TOKEN environment variable, never a command-line token.
 All HTTP goes directly to 127.0.0.1 through node:http, bypassing environment proxies.
 Ctrl-C cancels this test's requests; it does not stop Docker or Ollama.`;
@@ -366,37 +366,9 @@ export async function runSuite(
     results: results.map(({ answer: _answer, ...metrics }) => metrics),
   };
 }
-function credential(port) {
+async function credential(port) {
   if (process.env.HERMES_STRESS_TOKEN) return process.env.HERMES_STRESS_TOKEN;
-  const read = (account) =>
-    execFileSync(
-      "/usr/bin/security",
-      [
-        "find-generic-password",
-        "-s",
-        "com.jxmesmaherry.hermesllm",
-        "-a",
-        account,
-        "-w",
-      ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 15_000 },
-    ).trim();
-  try {
-    let value;
-    try {
-      value = read("workspace-credentials-v1");
-    } catch (error) {
-      if (error.status !== 44) throw error;
-      return read(`webui-token-${port}`);
-    }
-    const token = JSON.parse(value).tokens?.[String(port)];
-    if (typeof token !== "string" || !token) throw new Error();
-    return token;
-  } catch {
-    throw new Error(
-      "Keychain access was denied, timed out, or no session exists. Unlock/sign in to HERMES and allow the trusted security helper, or supply HERMES_STRESS_TOKEN temporarily. No secret was changed.",
-    );
-  }
+  return readVaultValue("token", dirname(defaultConfig), port);
 }
 async function main() {
   if (process.argv.includes("--help")) {
@@ -442,7 +414,8 @@ async function main() {
   };
   console.log(JSON.stringify(plan, null, 2));
   if (options["dry-run"]) return;
-  const token = options.target === "webui" ? credential(options.port) : null;
+  const token =
+    options.target === "webui" ? await credential(options.port) : null;
   const cancel = new AbortController();
   const stop = () => cancel.abort();
   process.once("SIGINT", stop);

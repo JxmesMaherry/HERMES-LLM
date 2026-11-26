@@ -78,34 +78,120 @@ async fn health(state: State<'_, AppState>) -> Result<services::Health> {
         .unwrap_or((None, false));
     Ok(services::health(&state.client, &config, &state.root, token, unlocked).await)
 }
-async fn ensure_unlocked(state: &AppState) -> Result<()> {
+fn require_unlocked(state: &AppState) -> Result<()> {
     if state
         .vault
         .lock()
         .expect("credential cache lock")
         .unlocked()
     {
-        return Ok(());
+        Ok(())
+    } else {
+        Err(message("Unlock HERMES using the password you chose in the app. No Mac or Keychain password is needed."))
     }
-    let port = state.settings().port;
-    let running_secret = services::running_backend_secret().await;
+}
+#[tauri::command]
+fn credential_status(state: State<'_, AppState>) -> credentials::Status {
+    state.vault.lock().expect("credential cache lock").status()
+}
+#[tauri::command]
+async fn unlock_credentials(state: State<'_, AppState>, password: String) -> Result<()> {
+    let _guard = state
+        .operation
+        .try_lock()
+        .map_err(|_| message("Wait for the current operation."))?;
+    let vault = state.vault.clone();
+    let password = zeroize::Zeroizing::new(password);
+    tokio::task::spawn_blocking(move || {
+        vault
+            .lock()
+            .expect("credential cache lock")
+            .unlock(&password)
+    })
+    .await
+    .map_err(|_| message("HERMES unlock was interrupted. Retry when ready."))?
+}
+#[tauri::command]
+async fn create_credentials(
+    state: State<'_, AppState>,
+    password: String,
+    confirmation: String,
+    reset: bool,
+) -> Result<()> {
+    let _guard = state
+        .operation
+        .try_lock()
+        .map_err(|_| message("Wait for the current operation."))?;
+    let password = zeroize::Zeroizing::new(password);
+    let confirmation = zeroize::Zeroizing::new(confirmation);
+    if *password != *confirmation {
+        return Err(message("The HERMES passwords do not match."));
+    }
+    credentials::validate_password(&password)?;
+    let cached = state
+        .vault
+        .lock()
+        .expect("credential cache lock")
+        .backend_secret()
+        .ok();
+    let secret = match cached {
+        Some(secret) => secret,
+        None => services::secret_for_password_setup(reset).await?,
+    };
     let vault = state.vault.clone();
     tokio::task::spawn_blocking(move || {
         vault
             .lock()
             .expect("credential cache lock")
-            .unlock(port, running_secret)
+            .create(&password, secret, reset)
     })
     .await
-    .map_err(|_| message("Credential unlock was interrupted. Click Unlock to retry."))?
+    .map_err(|_| message("Could not finish password setup."))?
 }
 #[tauri::command]
-async fn unlock_credentials(state: State<'_, AppState>) -> Result<()> {
+async fn recovery_accounts(state: State<'_, AppState>) -> Result<Value> {
+    require_unlocked(&state)?;
+    services::account_recovery(json!({"action":"list"})).await
+}
+#[tauri::command]
+async fn reset_local_account(
+    state: State<'_, AppState>,
+    email: String,
+    password: String,
+    confirmation: String,
+    confirmed: bool,
+) -> Result<()> {
     let _guard = state
         .operation
         .try_lock()
-        .map_err(|_| message("Wait for the current operation before unlocking."))?;
-    ensure_unlocked(&state).await
+        .map_err(|_| message("Wait for the current operation."))?;
+    require_unlocked(&state)?;
+    let password = zeroize::Zeroizing::new(password);
+    let confirmation = zeroize::Zeroizing::new(confirmation);
+    if !confirmed || *password != *confirmation {
+        return Err(message(
+            "Confirm the account reset and matching new passwords.",
+        ));
+    }
+    credentials::validate_password(&password)?;
+    if !email.contains('@') || email.len() > 254 {
+        return Err(message("Select the local administrator to recover."));
+    }
+    services::account_recovery(
+        json!({"action":"reset","email":email,"password":password.as_str()}),
+    )
+    .await?;
+    let config = state.settings();
+    let token = api::authenticate(&state.client, &config, &email, &password, false).await?;
+    let vault = state.vault.clone();
+    tokio::task::spawn_blocking(move || {
+        vault
+            .lock()
+            .expect("credential cache lock")
+            .set_token(config.port, Some(token))
+    })
+    .await
+    .map_err(|_| message("The account was reset; sign in with your new local-account password."))?
 }
 #[tauri::command]
 async fn backend_action(state: State<'_, AppState>, action: String) -> Result<String> {
@@ -115,7 +201,7 @@ async fn backend_action(state: State<'_, AppState>, action: String) -> Result<St
         .map_err(|_| message("A backend or sync operation is already running."))?;
     let config = state.settings();
     let secret = if action == "start" || action == "restart" {
-        ensure_unlocked(&state).await?;
+        require_unlocked(&state)?;
         Some(
             state
                 .vault
@@ -147,7 +233,7 @@ async fn authenticate(
         .operation
         .try_lock()
         .map_err(|_| message("Wait for the current operation before signing in."))?;
-    ensure_unlocked(&state).await?;
+    require_unlocked(&state)?;
     let config = state.settings();
     let token = api::authenticate(&state.client, &config, &email, &password, create).await?;
     let vault = state.vault.clone();
@@ -416,11 +502,11 @@ pub fn run() {
                 .redirect(reqwest::redirect::Policy::none())
                 .build()?;
             app.manage(AppState {
-                root,
+                root: root.clone(),
                 config: Mutex::new(settings),
-                vault: Arc::new(Mutex::new(credentials::Vault::restore_silently(
-                    credentials::Keychain,
-                ))),
+                vault: Arc::new(Mutex::new(credentials::Vault::open(credentials::path(
+                    &root,
+                )))),
                 client,
                 plan: Mutex::new(None),
                 chats: Mutex::new(HashMap::new()),
@@ -431,6 +517,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_config,
             unlock_credentials,
+            credential_status,
+            create_credentials,
+            recovery_accounts,
+            reset_local_account,
             save_config,
             health,
             backend_action,
@@ -452,4 +542,55 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("Unable to launch HERMES-LLM");
+}
+
+// Used only by source-development CLI tools. Password input is JSON on stdin,
+// never argv. This branch runs before Tauri/Cocoa and never calls Keychain.
+pub fn run_vault_cli() -> bool {
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).is_some_and(|a| a == "--vault-protocol") {
+        println!("HERMES_VAULT_CLI_V1");
+        return true;
+    }
+    if !args.get(1).is_some_and(|a| a == "--vault-read") {
+        return false;
+    }
+    let result = (|| -> Result<String> {
+        use std::io::Read;
+        if args.len() != 5 || !["backend-secret", "token"].contains(&args[2].as_str()) {
+            return Err(message("Invalid vault helper request."));
+        }
+        let port: u16 = args[4]
+            .parse()
+            .map_err(|_| message("Invalid backend port."))?;
+        let mut input = zeroize::Zeroizing::new(Vec::new());
+        std::io::stdin()
+            .take(16 * 1024 + 1)
+            .read_to_end(&mut input)?;
+        if input.len() > 16 * 1024 {
+            return Err(message("Vault helper request is too large."));
+        }
+        #[derive(serde::Deserialize)]
+        struct Input {
+            password: String,
+        }
+        let input: Input =
+            serde_json::from_slice(&input).map_err(|_| message("Invalid vault helper input."))?;
+        let password = zeroize::Zeroizing::new(input.password);
+        let mut vault = credentials::Vault::open(credentials::path(std::path::Path::new(&args[3])));
+        vault.unlock(&password)?;
+        if args[2] == "backend-secret" {
+            vault.backend_secret()
+        } else {
+            vault.token(port)
+        }
+    })();
+    match result {
+        Ok(secret) => print!("{secret}"),
+        Err(error) => {
+            eprintln!("HERMES: {error}");
+            std::process::exit(1);
+        }
+    }
+    true
 }

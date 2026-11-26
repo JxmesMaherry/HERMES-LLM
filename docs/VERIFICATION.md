@@ -1,64 +1,48 @@
 # Verification record
 
-Date: 26 November 2026. Actual execution on an Apple Silicon Mac with Docker Desktop, native Ollama and the installed `qwen3:4b-instruct` model. No GitHub workflow was dispatched and no source or release was pushed/published.
+Current password-based preview: **0.1.1**, 26 November 2026, Apple Silicon macOS. No source was pushed, no release was published, and no GitHub workflow was dispatched.
 
-## Executed successfully
+## Executed checks
 
-| Check | Result |
+| Check | Actual result |
 | --- | --- |
-| Reproducible npm install | `npm ci --offline` succeeded using the populated local cache |
-| ESLint | Passed with supported ESLint 10 |
-| TypeScript strict check | Passed |
-| Stress-tool contract tests | 7 passed: input limits, RAG request format, bounded concurrency, early stopping, metrics privacy, SSE/UTF-8/source checks and timeouts |
-| Stress-tool live smoke | 1 real Ollama request passed, 32-token limit, 2,084 ms total and 1,433 ms to first visible answer text; a smoke check, not a representative benchmark |
-| Stress-tool dry runs | Ollama and selected-knowledge plans succeeded without requests or Keychain reads |
-| Frontend tests | 7 passed: credential-unlock gating, overlapping refresh protection, honest prerequisite states, setup gating, deletion consent, streamed chat/history and unavailable services |
-| Production frontend build | Passed, bundled local assets |
-| Rust formatting | `cargo fmt --check` passed |
-| Rust lint | `cargo clippy --locked --all-targets -- -D warnings` passed |
-| Default Rust suite | 27 passed; 1 live test deliberately ignored by default |
-| Live Rust acceptance | Separately executed ignored test passed against real Open WebUI v0.13.5 and native Qwen |
-| Actual document retrieval | Public fixture was indexed; streamed answer included `AMBER-7319` without that code in the prompt |
-| Live incremental sync | First addition, unchanged second preview, modified replacement, declined deletion and confirmed cleanup all passed |
-| Docker configuration | `docker compose config --quiet` passed with a validation-only secret |
-| CLI bootstrap / doctor | Temporary-path config creation and doctor passed; bootstrap secret lookup was blocked by Keychain access and was not completed |
-| Shell syntax / version consistency | All scripts parsed; all four package versions match 0.1.0 |
-| npm audit | No vulnerabilities reported |
-| RustSec audit | Exit 0, no vulnerability errors; three upstream warnings described below |
-| Native app | Built, launched and observed through macOS accessibility and a screenshot; connected backend, Qwen streaming and rendered Markdown/code were visible |
-| Local DMG | Real Apple Silicon `.app` and `.dmg` produced by Tauri; signature/resource/frontend, bundled licence texts and disk-image integrity checks passed for the resource-complete build |
-| Redistribution notices | 428 npm/Rust production/build packages, all with supplied licence text or pinned upstream fallback notices |
+| Frontend tests | 10 passed, including in-app password creation/unlock, explicit saved-sign-in reset and confirmed local-account recovery |
+| Stress-tool tests | 7 passed for bounded concurrency, timeouts, private metrics and authenticated retrieval event checks |
+| Rust tests | 25 passed; one real-backend test ignored by default and executed separately |
+| Encrypted vault | Round-trip persistence, wrong password, tampering, hostile KDF parameters, weak-password rejection, cached reads, backup-on-reset and preservation of fixture documents passed |
+| SQLite recovery | 4 Python tests passed: unchanged user/KB/chat identity, original database backup, safe administrator listing, and parameterised updates rejecting unknown/injected addresses |
+| Real password reset | Isolated Open WebUI v0.13.5 administrator recovered; sign-in with the new password succeeded; user ID and existing knowledge access were unchanged |
+| Real RAG/incremental sync | Isolated native client retrieved AMBER-7319 without the code in its question, then passed unchanged/modified/declined-deletion/confirmed-cleanup cases |
+| Frontend checks | Formatting, ESLint, strict TypeScript and production build passed; final packaging reruns the build |
+| Native checks | Rust formatting, locked compilation and Clippy with all targets and warnings denied passed |
+| Keychain removal | No Keychain API or /usr/bin/security invocation remains in app or CLI credential code; old Keychain entries are not read, changed or deleted |
+| Dependency audit | Cargo audit completed without vulnerability errors; upstream lockfile warnings remain documented in SECURITY.md |
+| Docker/shell/version checks | Compose configuration, shell syntax and the four package versions are checked locally |
 
-The live acceptance runner used a unique test Compose project and separate volume. Its container was stopped afterward. The volume `hermes-acceptance-91f6d5ac-data` was intentionally preserved. It contains only public invented test facts and local test account data. No personal source directory was scanned by the automated acceptance test. No production HERMES volume was removed or reset.
+The live recovery/RAG test used the isolated project `hermes-acceptance-7056d84e` and its own named data volume. Its container was stopped and its volume retained. Only invented public fixture facts were uploaded. The owner's books, real account password and production database were not reset by the agent. The user chooses their own password in the updated app.
 
-The Rust toolchain and cargo-audit used for verification were installed only under `/tmp/hermes-cargo` and `/tmp/hermes-rustup`. No system-wide Rust installation was made. Source-code users still need to install/locate their own Rust toolchain.
+The earlier 0.1.0 implementation used Keychain, and its memory-cache change did not solve the owner's unknown-Keychain-password problem. Version 0.1.1 supersedes that design with an encrypted local file and a user-chosen password. Old Keychain approval instructions are not required by this build.
 
-## Audit warnings
+## Remaining manual/external checks
 
-The RustSec cross-platform lockfile check reported `chrono` (unmaintained, RUSTSEC-2026-0543), `proc-macro-error` (unmaintained, RUSTSEC-2024-0370), and `glib` (iterator unsoundness, RUSTSEC-2024-0429). Audit warnings remain visible; no advisory was ignored. See SECURITY.md. npm audit reported zero vulnerabilities at execution time.
+- The owner must choose a new HERMES password in the app. If the local AI account password is forgotten too, use the backed-up account recovery screen.
+- A clean Mac/account install, minimum supported macOS compatibility, sleep/resume, long collections, large/scanned PDFs, full disconnected/offline use and backup/restore acceptance.
+- Heavy/concurrent load and per-book correctness checks against the owner's eight textbooks. Commands are provided; this workload was not run automatically.
+- Actual GitHub CI/release execution and download/installation of its artifact.
+- Developer ID signing and notarization. Local builds are ad-hoc signed only.
 
-## Awaiting manual or external verification
+## Final 0.1.1 package
 
-- Heavy/concurrent stress and per-book correctness checks against the owner’s eight textbooks; commands are provided in STRESS-TESTING.md.
-- Actual GitHub CI and release workflow runs, downloadable remote artifact, and tag-to-release publication.
-- Installing the final DMG on a different clean macOS account/Mac, including Gatekeeper behaviour and minimum macOS version.
-- Complete first-run native folder-picker, permissions and app restart acceptance as a controlled checklist on that clean account.
-- Large real PDF collections, scanned/empty PDFs, long-running model downloads and recovery from laptop sleep/network interruption.
-- Full offline testing with networking disconnected, backup/restore and long-running concurrent edits through Open WebUI.
-- Developer ID signing and Apple notarization. The local build is ad-hoc signed only.
+The final Apple Silicon `.app` and DMG built successfully. Bundle verification confirmed the ARM64 executable, embedded frontend, bundled Compose definition and licence resources, ad-hoc signature integrity and valid DMG checksums. The package's Info.plist reports 0.1.1, and its bundled Compose message references the encrypted vault. The CLI helper returns `HERMES_VAULT_CLI_V1` without opening a window.
 
-The implementation and mock/live contract results are evidence for the supported MVP, not a claim that every external/manual acceptance case has run. See TESTING.md for the repeatable checklist.
+The finished app was restarted and inspected through the native accessibility tree and screenshot. It displayed **Choose your HERMES password**, both new-password fields, the save button and the existing-setup recovery link. No Keychain prompt appeared during launch or refresh. Docker Desktop, native Ollama and Open WebUI v0.13.5 were responding. The password fields were left empty for the owner; no actual owner credentials were changed.
 
-## CLI Keychain verification limit
+Local artifact: `.artifacts/HERMES-LLM_0.1.1_aarch64.dmg` (ignored by Git). SHA-256:
 
-A CLI bootstrap check in `/tmp/HERMES CLI verification with spaces` created configuration safely, but macOS denied the command-line `security` helper access to the existing backend-secret entry. The bootstrap did not replace that secret; the duplicate add was rejected. The helper now distinguishes missing entries from denied access and fails with recovery guidance instead of attempting to create a secret after access denial. The desktop Keychain flow was observed working; completing the CLI access prompt is a manual acceptance item. `doctor.sh` in the same temporary configuration subsequently reported all installed/running service checks successfully.
+```text
+d11619594616b4862c43783e3861c8e1b6fbf7d9b2e8ee58182dbc6fe0574a78
+```
 
-## Local commit handover
+The final test rerun passed 10 frontend, 7 stress-tool, 25 default Rust and 4 Python tests. Loopback mock-server tests required execution outside the filesystem/network sandbox; the sandboxed attempts failed to bind a port, then the same tests passed with that restriction lifted. The live recovery/RAG result above was run separately against the isolated backend.
 
-The owner subsequently requested focused development commits. Local commits now cover backend infrastructure, desktop/chat/RAG, CI/DMG packaging, bounded stress testing, and the public documentation. No remote push, visibility change or release publication was performed.
-
-## Keychain loop regression
-
-The reported repeated prompts came from reading Keychain during health polling and each API/service operation. The fix uses a single protected vault with a memory cache. Startup lookup explicitly suppresses authentication UI, denied access remains locked until a user retry, and Stop/log inspection uses no secret. Added native regressions exercise 100 repeated cached/locked checks, one-time migration, sign-out persistence and corrupt-data preservation; a UI regression verifies focus/refresh does not invoke Unlock. macOS approval of the migrated vault itself remains a user step; no OS password was entered or stored by the agent.
-
-Native verification after the fix: the old UI was quit and the updated `.app` reopened with its selected model/folder preserved. Ollama, Docker and Open WebUI reported running. Two status refreshes completed without any Keychain dialog; the window remained usable with an explicit Unlock credentials button. The user can now perform the one-time OS approval. Docker and the knowledge volume were not stopped, reset or recreated.
+See PASSWORDS.md, TESTING.md and RELEASE.md for repeatable procedures.

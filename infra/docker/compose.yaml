@@ -6,7 +6,7 @@ services:
       - "127.0.0.1:${HERMES_PORT:-3000}:8080"
     environment:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
-      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:?Start via HERMES or scripts/start.sh to load the Keychain secret}
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:?Start via HERMES or scripts/start.sh to unlock the encrypted credential vault}
       WEBUI_AUTH: "true"
       ENABLE_SIGNUP: "false"
       ENABLE_API_KEY: "true"

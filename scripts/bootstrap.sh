@@ -16,8 +16,7 @@ const temp=path+'.tmp';fs.writeFileSync(temp,JSON.stringify(config,null,2),{mode
 JS
 cp "$REPO_DIR/infra/docker/compose.yaml" "$CONFIG_DIR/compose.yaml"
 load_config
-load_secret
-compose config --quiet
+WEBUI_SECRET_KEY=configuration-validation-only compose config --quiet
 printf 'HERMES configuration ready at %s\n' "$CONFIG_DIR"
 if [ "$HERMES_HF_OFFLINE" = 1 ]; then echo 'Embedding downloads are disabled. For a new backend, rerun with --allow-downloads to consent to the Hugging Face model download.'; fi
-echo 'Next: open Docker Desktop and Ollama, then run scripts/start.sh.'
+echo 'Next: open Docker Desktop and Ollama, open HERMES to choose your app password, then run scripts/start.sh.'

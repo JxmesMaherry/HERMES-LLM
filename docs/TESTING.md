@@ -38,7 +38,7 @@ The runner stops its own container in `finally` and preserves its data volume. I
 | Prerequisite states | Quit/start Ollama and Docker; verify missing/stopped/running/failed indications, no false success |
 | Initial backend | Start from Setup; wait for readiness; inspect loopback binding and persistent volume |
 | Port conflict | Occupy the configured port with a harmless local server; Start refuses to adopt it |
-| Local account | Explicit first administrator signup, Keychain session, subsequent sign-in and sign-out |
+| Local account | User-chosen HERMES password, encrypted session persistence, first administrator signup, sign-in/out, backed-up recovery |
 | Model discovery | Installed Qwen appears; unavailable selected model prevents send |
 | Chat | Real streamed answer, Markdown/code, cancellation, New conversation and saved history |
 | Folder picker | Select a dedicated directory outside the repository, including a path with spaces |
@@ -55,3 +55,5 @@ The runner stops its own container in `finally` and preserves its data volume. I
 | CI and release | Run actual GitHub workflows, download artifact, verify SHA-256 and install independently |
 
 Do not run tests that remove personal documents, unrelated containers or volumes. A macOS File and Folder permission prompt or Gatekeeper approval must be handled through normal OS interfaces, not by disabling protections.
+
+Password-vault tests cover wrong passwords, tampering, parameter bounds, cached access, encrypted reset backups and document preservation. Run `python3 -m unittest discover -s tests -p 'test_*.py'` for SQLite recovery invariants. The isolated live runner additionally verifies a real account password reset and subsequent sign-in with unchanged user/KB identity.

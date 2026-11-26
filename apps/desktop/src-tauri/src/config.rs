@@ -5,7 +5,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub const SERVICE: &str = "com.jxmesmaherry.hermesllm";
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Config {
@@ -110,11 +109,6 @@ pub fn save(root: &Path, config: &Config) -> Result<()> {
         &root.join("config.json"),
         &serde_json::to_vec_pretty(config)?,
     )
-}
-pub fn credential(account: &str) -> Result<keyring::Entry> {
-    keyring::Entry::new(SERVICE, account).map_err(|_| {
-        message("macOS Keychain is unavailable. Unlock your login Keychain and retry.")
-    })
 }
 #[cfg(test)]
 mod tests {

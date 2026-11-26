@@ -159,7 +159,7 @@ export default function Settings(props: Controls) {
             <>
               <div className="success-note">
                 <ShieldCheck size={19} />
-                Local session saved in macOS Keychain
+                Local session encrypted with your HERMES password
               </div>
               <Button
                 secondary

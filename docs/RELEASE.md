@@ -24,7 +24,7 @@ Validate the actual output paths (the DMG filename includes version/architecture
 ```sh
 ./scripts/verify-bundle.sh \
   'apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/HERMES-LLM.app' \
-  'apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/HERMES-LLM_0.1.0_aarch64.dmg'
+  'apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/HERMES-LLM_0.1.1_aarch64.dmg'
 shasum -a 256 apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
 ```
 
@@ -38,8 +38,8 @@ After approval to publish, update all four package versions and lockfiles, commi
 
 ```sh
 node scripts/check-version.mjs
-git tag -a v0.1.0 -m 'HERMES-LLM 0.1.0'
-git push origin v0.1.0
+git tag -a v0.1.1 -m 'HERMES-LLM 0.1.1'
+git push origin v0.1.1
 ```
 
 To test without publishing a release (requires GitHub CLI or the Actions UI):

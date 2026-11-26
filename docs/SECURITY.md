@@ -4,9 +4,9 @@
 
 HERMES runs a local client and backend. Docker publishes only `127.0.0.1:<configured port>`. Ollama remains native at `127.0.0.1:11434`; HERMES never sets `OLLAMA_HOST=0.0.0.0`. Docker Desktop connects through `host.docker.internal`. Do not expose either service to the LAN or forward its port.
 
-Open WebUI authentication stays enabled. The first administrator is explicitly created by the user; additional public signup is disabled. Sessions and the random backend application secret share one protected macOS Keychain entry (`workspace-credentials-v1`). Startup restoration suppresses authentication UI; explicit unlock caches them in Rust memory for the app session. Background checks and API operations never reopen Keychain or retry denied access. JSON preferences and conversation files are private to the user (mode 0600 in a mode-0700 directory). Passwords are not saved. Keychain access errors do not silently generate replacement secrets.
+Open WebUI authentication stays enabled. The first administrator is explicitly created by the user; additional public signup is disabled. Sessions and the random backend secret are encrypted in a local vault using a user-chosen HERMES password. Argon2id derives the key; XChaCha20-Poly1305 authenticates and encrypts the credential data. HERMES uses no Keychain APIs and never asks for a Mac password. It caches the unlocked state for the app session. JSON preferences and conversations remain mode 0600 inside a mode-0700 directory. See [password and recovery details](PASSWORDS.md).
 
-Docker administrators can inspect container environment variables, including the backend secret. Local account access, disk access, Docker access and an unlocked login Keychain are part of the trust boundary. HERMES does not provide encryption at rest for chats/documents; use macOS FileVault and account controls when needed. Keychain tokens can expire; sign in again.
+Docker administrators can inspect the container environment, including its secret, and operate the backend database. Local account, disk and Docker access are trust boundaries. The credential vault does not encrypt document files or chat stores; use FileVault and account controls as appropriate. Explicit local recovery is available only for HERMES's labelled container/data volume and requires a selected administrator and confirmation. It backs up the database, preserves the user ID and data, and revokes old account sessions. It does not disable authentication or MFA.
 
 ## Network policy
 
@@ -31,7 +31,7 @@ HERMES does not log prompts, documents, passwords or tokens. Open WebUI/Ollama h
 1. Stop the backend in Settings or run `./scripts/stop.sh`.
 2. Copy `~/Library/Application Support/com.jxmesmaherry.hermesllm/` to a private backup location.
 3. Back up the named volume using Docker Desktop’s volume export, or an explicitly chosen backup container. Do not run prune or delete volume commands. Backup archives contain private documents and chat data.
-4. Keep the Keychain `backend-secret` available. Moving to another Mac without it invalidates existing sessions; sign in again and plan secret rotation carefully. Do not publish exported Keychain data.
+4. Back up the encrypted `credentials.vault` and remember its HERMES password. Keep backups private. Moving a vault requires its password; forgotten-password recovery preserves backend data but needs local account reconnection.
 5. Restore with the backend stopped and the same supported image version, then verify retrieval and history before upgrading.
 
 Uninstalling the UI leaves model files, source documents, application data and Docker volumes intact. Deliberate erasure is a separate manual operation outside ordinary lifecycle commands.
@@ -43,5 +43,3 @@ Do not publish secrets or private examples. Until a private advisory channel is 
 ## Dependency audit status
 
 The 26 November 2026 RustSec audit exited successfully with no vulnerability errors and three upstream warnings in the cross-platform lockfile: `chrono` unmaintained ([RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543)), `proc-macro-error` unmaintained ([RUSTSEC-2024-0370](https://rustsec.org/advisories/RUSTSEC-2024-0370)), and `glib` iterator unsoundness ([RUSTSEC-2024-0429](https://rustsec.org/advisories/RUSTSEC-2024-0429)). These are not suppressed. Track upstream Tauri/dependency updates and rerun audits before distributing a release. Passing an advisory database check does not certify the absence of defects.
-
-The unlock flow does not store the macOS password, alter Keychain access controls or grant other applications access. macOS may request approval again for a changed ad-hoc-signed application, a locked Keychain or a new app session without remembered access. When offered, normal “Always Allow” approval applies to the trusted HERMES build; Developer ID signing is a future distribution improvement. Stop/log inspection requires no credential read. Legacy entries are retained securely during migration instead of deleting a working secret.

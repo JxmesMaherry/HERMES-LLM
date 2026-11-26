@@ -165,49 +165,134 @@ pub async fn health(
     }
 }
 
-// Migration reads only our labelled container, never prints environment values,
-// and preserves the existing backend secret. Docker access is already a trust boundary.
-pub async fn running_backend_secret() -> Option<String> {
-    let docker = docker_path()?;
-    let output = run_docker(
+// Read only the explicitly HERMES-labelled container. No Keychain API is used.
+async fn managed_container(include_stopped: bool) -> Result<(PathBuf, String)> {
+    let docker = docker_path().ok_or_else(|| message("Install Docker Desktop first."))?;
+    let mut args = vec!["ps"];
+    if include_stopped {
+        args.push("-a");
+    }
+    args.extend([
+        "--filter",
+        "label=com.docker.compose.project=hermes-llm",
+        "--filter",
+        "label=com.docker.compose.service=open-webui",
+        "--format",
+        "{{.ID}}",
+    ]);
+    let output = run_docker(&docker, &args, 5).await?;
+    if !output.status.success() {
+        return Err(message(
+            "Open Docker Desktop before password setup or recovery.",
+        ));
+    }
+    let ids = String::from_utf8(output.stdout)
+        .map_err(|_| message("Docker returned invalid container metadata."))?;
+    let id = ids
+        .lines()
+        .next()
+        .ok_or_else(|| message("Start the HERMES backend before recovering its local account."))?
+        .to_owned();
+    if id.is_empty() || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(message("Invalid HERMES container identity."));
+    }
+    Ok((docker, id))
+}
+pub async fn secret_for_password_setup(reset: bool) -> Result<String> {
+    let docker = docker_path()
+        .ok_or_else(|| message("Open Docker Desktop before setting your HERMES password."))?;
+    if !run_docker(&docker, &["info", "--format", "{{.ServerVersion}}"], 5)
+        .await?
+        .status
+        .success()
+    {
+        return Err(message("Open Docker Desktop before password setup so existing backend credentials can be preserved."));
+    }
+    if let Ok((docker, id)) = managed_container(true).await {
+        let output = run_docker(
+            &docker,
+            &["inspect", "--format", "{{json .Config.Env}}", &id],
+            5,
+        )
+        .await?;
+        if output.status.success() {
+            let values: Vec<String> = serde_json::from_slice(&output.stdout)?;
+            if let Some(secret) = values.into_iter().find_map(|v| {
+                v.strip_prefix("WEBUI_SECRET_KEY=")
+                    .filter(|s| s.len() >= 24 && s.len() <= 1024)
+                    .map(str::to_owned)
+            }) {
+                return Ok(secret);
+            }
+        }
+    }
+    let volume = run_docker(
         &docker,
         &[
-            "ps",
-            "--filter",
-            "label=com.docker.compose.project=hermes-llm",
-            "--filter",
-            "label=com.docker.compose.service=open-webui",
+            "volume",
+            "inspect",
+            "hermes-llm-open-webui-data",
             "--format",
-            "{{.ID}}",
+            "{{.Name}}",
         ],
-        3,
+        5,
     )
-    .await
-    .ok()?;
-    if !output.status.success() {
-        return None;
+    .await?;
+    if volume.status.success() && !reset {
+        return Err(message("Existing backend data was found without its old container. Choose Reset saved sign-ins to explicitly replace only authentication credentials; books and chats will be kept."));
     }
-    let ids = String::from_utf8(output.stdout).ok()?;
-    let id = ids.lines().next()?;
-    if id.is_empty() || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return None;
-    }
-    let output = run_docker(
+    Ok(crate::credentials::fresh_backend_secret())
+}
+pub async fn account_recovery(payload: serde_json::Value) -> Result<serde_json::Value> {
+    use std::process::Stdio;
+    use tokio::io::AsyncWriteExt;
+    let (docker, id) = managed_container(false).await?;
+    let mounts = run_docker(
         &docker,
-        &["inspect", "--format", "{{json .Config.Env}}", id],
-        3,
+        &["inspect", "--format", "{{json .Mounts}}", &id],
+        5,
     )
-    .await
-    .ok()?;
-    if !output.status.success() {
-        return None;
+    .await?;
+    let mounts: serde_json::Value = serde_json::from_slice(&mounts.stdout)?;
+    if !mounts.as_array().is_some_and(|items| {
+        items.iter().any(|m| {
+            m["Name"] == "hermes-llm-open-webui-data" && m["Destination"] == "/app/backend/data"
+        })
+    }) {
+        return Err(message(
+            "Recovery is restricted to the HERMES-managed local data volume.",
+        ));
     }
-    let values: Vec<String> = serde_json::from_slice(&output.stdout).ok()?;
-    values.into_iter().find_map(|v| {
-        v.strip_prefix("WEBUI_SECRET_KEY=")
-            .filter(|s| s.len() >= 24 && s.len() <= 1024)
-            .map(str::to_owned)
-    })
+    let input = zeroize::Zeroizing::new(serde_json::to_vec(&payload)?);
+    let mut cmd = Command::new(docker);
+    cmd.args([
+        "exec",
+        "-i",
+        &id,
+        "python",
+        "-c",
+        include_str!("../resources/account_recovery.py"),
+    ])
+    .stdin(Stdio::piped())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::null())
+    .kill_on_drop(true);
+    let mut child = cmd.spawn()?;
+    let mut stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| message("Could not open local recovery input."))?;
+    stdin.write_all(&input).await?;
+    drop(stdin);
+    let output = tokio::time::timeout(Duration::from_secs(90), child.wait_with_output())
+        .await
+        .map_err(|_| {
+            message("Local recovery timed out. Existing books and chats were not removed.")
+        })??;
+    if !output.status.success() {
+        return Err(message("Local account recovery failed. Check the selected administrator and backend availability. No books or chats were removed."));
+    }
+    Ok(serde_json::from_slice(&output.stdout)?)
 }
 
 pub async fn lifecycle(

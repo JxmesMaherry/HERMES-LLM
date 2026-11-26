@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Badge, Button, External, Heading, Step } from "./components";
 import { bridge } from "./bridge";
+import AccountRecovery from "./AccountRecovery";
 import type { Config, Health, Model, Knowledge } from "./types";
 export interface Controls {
   config: Config;
@@ -29,59 +30,62 @@ export function AuthForm({
   const [password, setPassword] = useState("");
   const [create, setCreate] = useState(false);
   return (
-    <form
-      className="auth-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void run("Connecting your local account…", async () => {
-          try {
-            await bridge.auth(email, password, create);
-            await refresh();
-          } finally {
-            setPassword("");
-          }
-        });
-      }}
-    >
-      <h3>Connect your local Open WebUI account</h3>
-      <p>
-        On a new backend, create its first administrator account. Credentials
-        stay on this Mac; the session is saved in Keychain.
-      </p>
-      <div className="form-row">
-        <label>
-          Email
+    <div>
+      <form
+        className="auth-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void run("Connecting your local account…", async () => {
+            try {
+              await bridge.auth(email, password, create);
+              await refresh();
+            } finally {
+              setPassword("");
+            }
+          });
+        }}
+      >
+        <h3>Connect your local Open WebUI account</h3>
+        <p>
+          On a new backend, create its first administrator account. Credentials
+          stay on this Mac; the session is encrypted with your HERMES password.
+        </p>
+        <div className="form-row">
+          <label>
+            Email
+            <input
+              type="email"
+              autoComplete="username"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              autoComplete={create ? "new-password" : "current-password"}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+        </div>
+        <label className="checkbox">
           <input
-            type="email"
-            autoComplete="username"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="checkbox"
+            checked={create}
+            onChange={(e) => setCreate(e.target.checked)}
           />
+          Create the first account on a new backend
         </label>
-        <label>
-          Password
-          <input
-            type="password"
-            autoComplete={create ? "new-password" : "current-password"}
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-      </div>
-      <label className="checkbox">
-        <input
-          type="checkbox"
-          checked={create}
-          onChange={(e) => setCreate(e.target.checked)}
-        />
-        Create the first account on a new backend
-      </label>
-      <Button type="submit" disabled={!!busy}>
-        {create ? "Create local account" : "Sign in locally"}
-      </Button>
-    </form>
+        <Button type="submit" disabled={!!busy}>
+          {create ? "Create local account" : "Sign in locally"}
+        </Button>
+      </form>
+      <AccountRecovery onDone={refresh} />
+    </div>
   );
 }
 export function ModelPicker({

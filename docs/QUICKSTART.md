@@ -33,7 +33,7 @@ The development build is ad-hoc signed and **not Apple-notarized**. macOS may bl
 
 1. Check that Docker and Ollama are running.
 2. Start the local Open WebUI backend. Its official container may download on first start. Allow the optional embedding-model download only if you need it and consent to it.
-3. Create the first local account or sign in to an existing one. This account belongs to your local backend and requires no paid service. HERMES stores its session in macOS Keychain.
+3. Create the first local account or sign in to an existing one. This account belongs to your local backend and requires no paid service. HERMES encrypts its saved session using the HERMES password you choose.
 4. Choose an installed model. On a 16 GB Mac, start with `qwen3:4b-instruct`; use the explicit Download button if it is absent.
 5. Select a document folder and create/select a knowledge base.
 
@@ -47,4 +47,5 @@ Use your own PDF, TXT or Markdown files. A scanned PDF may require external OCR.
 
 Closing HERMES leaves services running. Use **Settings → Stop** to stop the backend without deleting data. For help, read [troubleshooting](TROUBLESHOOTING.md), [hardware guidance](HARDWARE.md) and [privacy/backup information](SECURITY.md).
 
-If saved credentials are locked, click **Unlock credentials** once. HERMES keeps them in memory for the session and does not ask again during background checks or chat. A changed ad-hoc build can need fresh macOS approval. Your documents and backend data remain intact.
+
+First choose a HERMES password in the app (at least 12 characters). It is not your Mac password. For a forgotten local account password, use the Settings recovery flow described in [PASSWORDS.md](PASSWORDS.md); books and chats are preserved.

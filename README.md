@@ -42,7 +42,7 @@ Manual sync is supported now. Scanned PDFs may need OCR outside HERMES. The defa
 For developers with Node.js 22.12+, run these from the repository after the backend is ready and indexing has completed:
 
 ```sh
-# Preview the test plan without requests or Keychain access.
+# Preview the test plan without requests or password prompts.
 node scripts/stress-test.mjs --knowledge --requests 3 --dry-run
 
 # Exercise textbook retrieval through authenticated Open WebUI.
@@ -52,11 +52,11 @@ node scripts/stress-test.mjs --knowledge --requests 3 --concurrency 1
 node scripts/stress-test.mjs --target ollama --requests 6 --concurrency 1
 ```
 
-The tool reports first-token latency, total latency, p50/p95, errors and emitted retrieval sources. It is bounded, makes no configuration changes and does not save prompts or answers. See [stress testing](docs/STRESS-TESTING.md) for concurrency, soak tests, eight-book accuracy checks, Keychain authentication and monitoring commands.
+The tool reports first-token latency, total latency, p50/p95, errors and emitted retrieval sources. It is bounded, makes no configuration changes and does not save prompts or answers. See [stress testing](docs/STRESS-TESTING.md) for concurrency, soak tests, eight-book accuracy checks, HERMES password authentication and monitoring commands.
 
 ## Privacy and operation
 
-The interface is React/TypeScript in Tauri 2. Rust manages local files, Keychain credentials and services. Open WebUI v0.13.5 runs in Docker and connects to native Ollama for GPU-accelerated inference.
+The interface is React/TypeScript in Tauri 2. Rust manages local files, encrypted local credentials and services. Open WebUI v0.13.5 runs in Docker and connects to native Ollama for GPU-accelerated inference.
 
 Models and documents stay local during chat/indexing. Starting the backend may download its official image; model and optional embedding downloads require explicit actions. Cloud model connections, web search and telemetry are disabled in the supported configuration. Desktop and Open WebUI browser chat histories are separate.
 
@@ -73,7 +73,7 @@ npm ci
 npm run desktop
 ```
 
-Complete setup in the app. Optional CLI setup uses `./scripts/bootstrap.sh`, `./scripts/start.sh`, `./scripts/doctor.sh` and `./scripts/stop.sh`; allow the standard trusted Keychain request when prompted.
+Complete setup in the app. Optional CLI setup uses `./scripts/bootstrap.sh`, `./scripts/start.sh`, `./scripts/doctor.sh` and `./scripts/stop.sh`; choose your HERMES password in the app before starting services from the CLI.
 
 ```sh
 npm test        # Frontend and stress-tool contract tests
@@ -89,4 +89,8 @@ Use focused commits, include tests for API/file/deletion changes, run the docume
 
 **Screenshot placeholder:** a public native-window screenshot will be added after capturing a clean demonstration workspace without private chats or documents.
 
-If saved credentials are locked, click **Unlock credentials** once. HERMES keeps them in memory for the session and does not ask again during background checks or chat. A changed ad-hoc build can need fresh macOS approval. Your documents and backend data remain intact.
+## Passwords and recovery
+
+Version 0.1.1 uses a password **you choose inside HERMES**, with an encrypted local credential vault. It does not use macOS Keychain or ask for a Mac password. Unlock once per app session. On the first launch of this replacement build, choose a new HERMES password (at least 12 characters).
+
+Connect your local Open WebUI account in Settings. If its old password is also forgotten, use **Forgot your local account password?**: select your local administrator, choose a new password and explicitly confirm recovery. A database backup is made first; books, chats, the user ID and knowledge permissions are preserved. You can choose the same password for HERMES and that local account. See [password recovery](docs/PASSWORDS.md).
