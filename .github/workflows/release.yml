@@ -1,0 +1,74 @@
+name: macOS DMG
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - run: npm ci
+      - name: Verify version and tag
+        run: node scripts/check-version.mjs "${GITHUB_REF_NAME}"
+      - run: npm run lint && npm test
+      - name: Build ad-hoc signed Apple Silicon app and DMG
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: apps/desktop
+          args: --target aarch64-apple-darwin --bundles app,dmg
+        # For Developer ID signing, add APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD,
+        # APPLE_SIGNING_IDENTITY and notarization credentials here using secrets.
+        # Also override bundle.macOS.signingIdentity (currently "-"). See docs/RELEASE.md.
+      - name: Verify and name distribution artifact
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          bundle=apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle
+          app="$bundle/macos/HERMES-LLM.app"
+          dmg=$(find "$bundle/dmg" -maxdepth 1 -name '*.dmg' -print -quit)
+          test -n "$dmg" && test -s "$dmg"
+          scripts/verify-bundle.sh "$app" "$dmg"
+          mkdir -p .artifacts
+          cp "$dmg" ".artifacts/HERMES-LLM_${version}_aarch64.dmg"
+          (cd .artifacts && shasum -a 256 *.dmg > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: HERMES-LLM-macOS-aarch64
+          path: .artifacts/*
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download verified artifact and attach to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name HERMES-LLM-macOS-aarch64 --dir .artifacts
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "HERMES-LLM $GITHUB_REF_NAME" --notes-file docs/RELEASE-NOTES.md
+          fi
+          gh release upload "$GITHUB_REF_NAME" .artifacts/*
