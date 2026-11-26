@@ -1,5 +1,7 @@
 # HERMES-LLM
 
+[![CI](https://github.com/JxmesMaherry/HERMES-LLM/actions/workflows/ci.yml/badge.svg)](https://github.com/JxmesMaherry/HERMES-LLM/actions/workflows/ci.yml)
+
 **Private AI, on your Mac.** Chat with a local model and ask questions about your PDF, TXT and Markdown documents. HERMES combines a native macOS interface, Ollama and Open WebUI. No paid AI account is needed.
 
 > Development preview for Apple Silicon. The DMG is ad-hoc signed, not Apple-notarized. Public downloads become available after the first release is published.
@@ -85,9 +87,7 @@ Read [development](docs/DEVELOPMENT.md), [architecture](docs/ARCHITECTURE.md), [
 
 ## Contributing and licences
 
-Use focused commits, include tests for API/file/deletion changes, run the documented checks, and keep private documents, credentials and local data out of Git. [MIT](LICENSE) covers HERMES code. [Open WebUI](https://github.com/open-webui/open-webui), [Ollama](https://github.com/ollama/ollama), Docker and downloaded models retain their own terms. Open WebUI’s original branding is preserved. See [third-party notices](docs/THIRD-PARTY.md).
-
-**Screenshot placeholder:** a public native-window screenshot will be added after capturing a clean demonstration workspace without private chats or documents.
+Read the [contribution guide](CONTRIBUTING.md) for setup, checks and pull requests. Report bugs and feature requests through [GitHub Issues](https://github.com/JxmesMaherry/HERMES-LLM/issues); follow the [security policy](docs/SECURITY.md) for vulnerabilities. Keep private documents, credentials and local data out of Git. [MIT](LICENSE) covers HERMES code. [Open WebUI](https://github.com/open-webui/open-webui), [Ollama](https://github.com/ollama/ollama), Docker and downloaded models retain their own terms. Open WebUI’s original branding is preserved. See [third-party notices](docs/THIRD-PARTY.md).
 
 ## Passwords and recovery
 

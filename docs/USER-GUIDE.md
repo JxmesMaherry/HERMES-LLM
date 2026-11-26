@@ -7,8 +7,7 @@ HERMES is a Tauri 2 desktop application that connects native Ollama to a local, 
 > Development preview · Apple Silicon · app minimum macOS 13+, subject to current Docker/Ollama requirements · ad-hoc signed, not notarized.
 > A release is available only after a maintainer runs the release workflow. See [verification status](VERIFICATION.md) for checks actually performed.
 
-<!-- Screenshot placeholder: replace with a captured native Overview window after visual verification. -->
-**Screenshot placeholder:** the native Overview contains live service status, model availability and document indexing status. No simulated health or AI replies are used.
+The native Overview shows live service status, model availability and document indexing status.
 
 ## What works
 

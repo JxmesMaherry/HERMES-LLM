@@ -24,6 +24,8 @@ apps/desktop/src-tauri/gen/
 *.sqlite
 *.sqlite3
 *.db
+*.vault
+conversations.json
 
 __pycache__/
 *.pyc
