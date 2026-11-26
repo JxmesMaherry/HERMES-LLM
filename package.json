@@ -15,8 +15,9 @@
     "dmg": "npm run tauri --workspace @hermes/desktop -- build --target aarch64-apple-darwin --bundles app,dmg",
     "lint": "npm run lint --workspace @hermes/desktop",
     "typecheck": "npm run typecheck --workspace @hermes/desktop",
-    "test": "npm run test --workspace @hermes/desktop",
+    "test": "npm run test --workspace @hermes/desktop && node --test tests/stress.test.mjs",
     "format": "npm run format --workspace @hermes/desktop",
-    "format:check": "npm run format:check --workspace @hermes/desktop"
+    "format:check": "npm run format:check --workspace @hermes/desktop",
+    "stress": "node scripts/stress-test.mjs"
   }
 }

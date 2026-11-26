@@ -1,0 +1,18 @@
+[
+  {
+    "id": "encapsulation",
+    "prompt": "Explain encapsulation and information hiding in object-oriented programming. If indexed textbooks are available, use them, name the supporting textbook and chapter, and include one short supporting quotation. Never invent a source or page number. Keep the answer concise."
+  },
+  {
+    "id": "binary-search",
+    "prompt": "Compare iterative and recursive binary search, including preconditions, time complexity and space complexity. Use indexed textbooks when attached and name the supporting source. If a detail is absent from the retrieved material, say so."
+  },
+  {
+    "id": "stack-queue",
+    "prompt": "Explain the difference between stacks and queues and give one programming use for each. When a knowledge base is attached, support the answer with its textbook title and chapter. Do not invent page numbers."
+  },
+  {
+    "id": "cross-book-comparison",
+    "prompt": "Using retrieved textbook passages where available, compare two treatments of recursion. Identify the source for each treatment. If fewer than two distinct sources are retrieved, state that limit instead of inventing a comparison."
+  }
+]
