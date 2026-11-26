@@ -1,6 +1,6 @@
 # Verification record
 
-Current password-based preview: **0.1.1**, 26 November 2026, Apple Silicon macOS. No source was pushed, no release was published, and no GitHub workflow was dispatched.
+Current password-based preview: **0.1.1**, 26 November 2026, Apple Silicon macOS. Source commits are now pushed to GitHub `main`; CI and a build-only installer workflow passed. The repository remains private and no tagged release has been published.
 
 ## Executed checks
 
@@ -28,7 +28,7 @@ The earlier 0.1.0 implementation used Keychain, and its memory-cache change did 
 - The owner must choose a new HERMES password in the app. If the local AI account password is forgotten too, use the backed-up account recovery screen.
 - A clean Mac/account install, minimum supported macOS compatibility, sleep/resume, long collections, large/scanned PDFs, full disconnected/offline use and backup/restore acceptance.
 - Heavy/concurrent load and per-book correctness checks against the owner's eight textbooks. Commands are provided; this workload was not run automatically.
-- Actual GitHub CI/release execution and download/installation of its artifact.
+- Installation acceptance of the GitHub-built artifact on a clean Mac/account; tagged release publication.
 - Developer ID signing and notarization. Local builds are ad-hoc signed only.
 
 ## Final 0.1.1 package
@@ -46,3 +46,21 @@ d11619594616b4862c43783e3861c8e1b6fbf7d9b2e8ee58182dbc6fe0574a78
 The final test rerun passed 10 frontend, 7 stress-tool, 25 default Rust and 4 Python tests. Loopback mock-server tests required execution outside the filesystem/network sandbox; the sandboxed attempts failed to bind a port, then the same tests passed with that restriction lifted. The live recovery/RAG result above was run separately against the isolated backend.
 
 See PASSWORDS.md, TESTING.md and RELEASE.md for repeatable procedures.
+
+## GitHub and open-source preparation
+
+On 26 November 2026, the implementation history was pushed to [JxmesMaherry/HERMES-LLM](https://github.com/JxmesMaherry/HERMES-LLM). Contribution instructions, bug/feature templates, a PR template, a CI badge, repository description and discovery topics are in place. The MIT licence, hardware/model guide, password recovery guide and stress commands are included. The repository is still private; public visibility and the first tagged release remain future maintainer actions.
+
+A local review of 157 historical file versions before the first push found no textbook/document files, databases, vaults or common credential patterns. This was a targeted history check, not a guarantee that every possible sensitive value or vulnerability can be detected. Private application data, generated installers and model files are excluded from Git.
+
+[GitHub CI](https://github.com/JxmesMaherry/HERMES-LLM/actions/runs/45816252142) passed on commit `c34ace4`: frontend checks and tests, Python account-recovery tests, dependency audit, Compose/shell validation, Rust formatting, Clippy, native tests and RustSec audit. [The macOS build-only workflow](https://github.com/JxmesMaherry/HERMES-LLM/actions/runs/45816251981) also passed and uploaded artifact `HERMES-LLM-macOS-aarch64` (artifact ID `15116625806`, retained until 10 December 2026). Release publication was skipped because this was a manual build rather than a tag push.
+
+The first build exposed an artifact-upload configuration error: the upload action excluded the hidden staging directory. Commit `c34ace4` fixed the upload by including hidden paths and restricting the upload to the DMG and checksum file. The successful rerun verified the ARM64 application bundle, embedded frontend/resources, ad-hoc signature and DMG integrity on the hosted Mac.
+
+The uploaded ZIP was downloaded through the GitHub connector. Its SHA-256 matched GitHub's artifact digest; its two expected files were extracted, the DMG matched its attached checksum, and `hdiutil verify` passed locally. The downloaded files are retained under `.artifacts/github-45816251981/`, ignored by Git. The GitHub-built DMG SHA-256 is:
+
+```text
+c40912568de218a73d8a7e46c7996f6f18a287027e71fe89d4167e5051332b9a
+```
+
+The locally built DMG checksum above and this hosted-build checksum identify separate packaging runs; byte-for-byte reproducible packaging is not claimed. The downloaded artifact was checked for integrity but was not installed over the owner's active application or represented as clean-Mac acceptance.

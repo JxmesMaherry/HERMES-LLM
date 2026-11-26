@@ -37,7 +37,7 @@ docs/
 README.md, LICENSE, .gitignore, package.json, package-lock.json, rust-toolchain.toml
 ```
 
-Generated frontend assets, Rust targets, app/DMG files and native schemas are ignored by Git. The repository was initially empty; existing Git configuration and remote settings were preserved. The implementation is recorded in focused local commits for infrastructure, the desktop app, CI/DMG packaging, stress testing, and public documentation. No push or release publication was performed.
+Generated frontend assets, Rust targets, app/DMG files and native schemas are ignored by Git. The repository was initially empty; existing Git configuration and remote settings were preserved. Focused commits cover infrastructure, the desktop app, CI/DMG packaging, stress testing, public documentation and password recovery. These commits are now pushed to `main` on GitHub. The repository remains private and no release tag has been published.
 
 ## Implemented
 
@@ -80,13 +80,13 @@ For this development session only, the temporary toolchain can be used without a
 PATH=/tmp/hermes-cargo/bin:$PATH CARGO_HOME=/tmp/hermes-cargo RUSTUP_HOME=/tmp/hermes-rustup npm run desktop
 ```
 
-DMG output: `apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/HERMES-LLM_0.1.1_aarch64.dmg`. See RELEASE.md for verification, manual workflow dispatch, tag creation/push and downloading Actions artifacts. Those publishing commands require explicit maintainer approval; none were executed here.
+DMG output: `apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/HERMES-LLM_0.1.1_aarch64.dmg`. See RELEASE.md for verification, manual workflow dispatch, tag creation/push and downloading Actions artifacts. A build-only workflow was dispatched and verified. Tag/release publication remains a separate maintainer action.
 
 ## Results and limits
 
 See VERIFICATION.md for exact executed checks: frontend build/lint/typecheck, 10 frontend tests, 7 stress-tool contract tests, 25 default Rust tests, a separately passed real chat/RAG/sync test, Compose validation, native launch and local `.app`/DMG generation. npm audit reported no vulnerabilities; RustSec exited 0 with three upstream warnings.
 
-The release workflow is implemented but has not run on GitHub. CLI tools use the password-protected Rust helper; Keychain is no longer used. The app is ad-hoc signed, not notarized. Desktop and Open WebUI browser chat histories are separate. Sync is manual, OCR is not bundled, empty directories are deliberately retained, and concurrent upstream edits are not an atomic transaction. A crash after upload but before cleanup may require inspection/retry. Limits are 5,000 documents, 20,000 entries, and a configurable maximum of 50 MB per document.
+GitHub CI and the build-only release workflow have passed; see VERIFICATION.md for links and the downloaded artifact checksum. CLI tools use the password-protected Rust helper; Keychain is no longer used. The app is ad-hoc signed, not notarized. Desktop and Open WebUI browser chat histories are separate. Sync is manual, OCR is not bundled, empty directories are deliberately retained, and concurrent upstream edits are not an atomic transaction. A crash after upload but before cleanup may require inspection/retry. Limits are 5,000 documents, 20,000 entries, and a configurable maximum of 50 MB per document.
 
 ## Public installation and stress testing
 
@@ -94,7 +94,7 @@ README.md now leads with installation steps and a Mac/model workload table. QUIC
 
 ## Remaining priorities
 
-1. Run CI and a manual release workflow after the source is approved/pushed; verify the downloaded DMG on a clean Mac/account using TESTING.md.
+1. Decide when to make the prepared repository public and publish the first tagged release; complete clean-Mac/account installation acceptance using TESTING.md.
 2. Complete controlled native picker/permission/restart/sleep/offline/backup acceptance and test broader PDF collections.
 3. Track and resolve upstream RustSec warnings; review advisories and licence notices before every release.
 4. Add Developer ID signing and notarization when credentials are available.

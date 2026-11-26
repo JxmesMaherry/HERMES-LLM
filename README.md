@@ -83,7 +83,7 @@ npm run build   # Frontend production build
 npm run dmg     # Apple Silicon app and DMG
 ```
 
-Read [development](docs/DEVELOPMENT.md), [architecture](docs/ARCHITECTURE.md), [actual verification results](docs/VERIFICATION.md), [release instructions](docs/RELEASE.md) and [the handover](docs/HANDOVER.md). The GitHub release workflow supports manual artifact builds and `v*` tag releases; it has not yet been run remotely.
+Read [development](docs/DEVELOPMENT.md), [architecture](docs/ARCHITECTURE.md), [actual verification results](docs/VERIFICATION.md), [release instructions](docs/RELEASE.md) and [the handover](docs/HANDOVER.md). GitHub CI and a build-only macOS installer workflow have passed. The release workflow supports manual artifact builds and `v*` tag releases; the first public release is still pending.
 
 ## Contributing and licences
 

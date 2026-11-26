@@ -2,7 +2,7 @@
 
 The release workflow creates an Apple Silicon `.app` and `.dmg` using the official Tauri action on `macos-15`. `workflow_dispatch` builds an Actions artifact without publishing a release. A pushed `v*` tag also attaches the verified DMG and SHA-256 file to a GitHub Release.
 
-No workflow has been run merely by writing this file. See VERIFICATION.md for actual local build results. Publishing requires the repository owner’s explicit approval; do not push tags as part of ordinary development.
+A build-only run has passed on GitHub, and its downloaded installer has been verified. See [VERIFICATION.md](VERIFICATION.md) for the run and checksum. The repository is currently private and no release tag has been published. Publishing requires the repository owner’s explicit approval; do not push tags as part of ordinary development.
 
 ## Local development distribution
 
@@ -49,7 +49,7 @@ gh workflow run release.yml --ref main
 gh run list --workflow release.yml
 gh run watch <run-id>
 gh run download <run-id> --name HERMES-LLM-macOS-aarch64 --dir ./release-artifacts
-shasum -a 256 ./release-artifacts/*.dmg
+(cd release-artifacts && shasum -a 256 -c SHA256SUMS.txt)
 ```
 
 The workflow validates the tag against package versions, builds both app and DMG, verifies required resources and non-empty output, uploads an artifact for 14 days, and only creates/attaches a GitHub Release for tag builds. It does not overwrite existing release attachments. Actions must be enabled and the intended source/ref must already exist remotely.
