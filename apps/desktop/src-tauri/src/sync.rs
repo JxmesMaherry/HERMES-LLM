@@ -303,17 +303,21 @@ async fn upload(
         .ok_or_else(|| message("Upload returned no file identifier."))?;
     config::validate_id(id)?;
     // v0.13.5 auto-links and indexes knowledge metadata BEFORE reporting completed.
-    for _ in 0..240 {
-        let status = Api::json(api.get(&format!("/api/v1/files/{id}/process/status"))).await?;
-        match status["status"].as_str() {
-            Some("completed") => return Ok(()),
-            Some("failed") => return Err(message("Text extraction or embedding failed. A scanned PDF may need OCR outside HERMES. Check local backend logs.")),
-            Some("pending" | "processing") => {},
-            _ => return Err(message("Unexpected processing status; verify Open WebUI v0.13.5.")),
+    wait_processed(api, id, Duration::from_secs(480)).await
+}
+async fn wait_processed(api: &Api, id: &str, limit: Duration) -> Result<()> {
+    tokio::time::timeout(limit, async {
+        loop {
+            let status = Api::json(api.get(&format!("/api/v1/files/{id}/process/status"))).await?;
+            match status["status"].as_str() {
+                Some("completed") => return Ok(()),
+                Some("failed") => return Err(message("Text extraction or embedding failed. A scanned PDF may need OCR outside HERMES. Check local backend logs.")),
+                Some("pending" | "processing") => {},
+                _ => return Err(message("Unexpected processing status; verify Open WebUI v0.13.5.")),
+            }
+            tokio::time::sleep(Duration::from_secs(2)).await;
         }
-        tokio::time::sleep(Duration::from_secs(2)).await;
-    }
-    Err(message("Document processing exceeded 8 minutes. No stale version was removed. Inspect the knowledge base before retrying."))
+    }).await.map_err(|_| message("Document processing exceeded 8 minutes. No stale version was removed. Inspect the knowledge base before retrying."))?
 }
 pub async fn apply(
     api: &Api,
@@ -524,6 +528,28 @@ mod contract_tests {
     };
     fn channel() -> tauri::ipc::Channel<Value> {
         tauri::ipc::Channel::new(|_| Ok(()))
+    }
+    #[tokio::test]
+    async fn processing_deadline_includes_slow_http_requests() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v1/files/fixture/process/status"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(json!({"status":"processing"}))
+                    .set_delay(Duration::from_secs(2)),
+            )
+            .mount(&server)
+            .await;
+        let start = Instant::now();
+        let result = wait_processed(
+            &Api::testing(server.uri(), "test".into()),
+            "fixture",
+            Duration::from_millis(50),
+        )
+        .await;
+        assert!(result.unwrap_err().to_string().contains("8 minutes"));
+        assert!(start.elapsed() < Duration::from_secs(1));
     }
     fn fixture(root: &Path, kb: &str, stale: bool) -> (Config, Plan) {
         std::fs::write(root.join("fact.md"), "test content").unwrap();

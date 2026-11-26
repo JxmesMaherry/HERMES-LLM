@@ -365,17 +365,25 @@ pub async fn lifecycle(
     Ok(format!("Backend {action} command completed."))
 }
 pub async fn wait_ready(client: &reqwest::Client, config: &Config) -> Result<()> {
-    for _ in 0..180 {
-        let status = backend_status(client, &config.base_url()).await;
-        if status.state == "running" {
-            return Ok(());
+    wait_ready_with_limit(client, config, Duration::from_secs(360)).await
+}
+async fn wait_ready_with_limit(
+    client: &reqwest::Client,
+    config: &Config,
+    limit: Duration,
+) -> Result<()> {
+    tokio::time::timeout(limit, async {
+        loop {
+            let status = backend_status(client, &config.base_url()).await;
+            if status.state == "running" {
+                return Ok(());
+            }
+            if status.state == "failed" {
+                return Err(message(status.detail));
+            }
+            tokio::time::sleep(Duration::from_secs(2)).await;
         }
-        if status.state == "failed" {
-            return Err(message(status.detail));
-        }
-        tokio::time::sleep(Duration::from_secs(2)).await;
-    }
-    Err(message("Backend was not ready within 6 minutes. Inspect logs, then retry. First launch may need the consented embedding download."))
+    }).await.map_err(|_| message("Backend was not ready within 6 minutes. Inspect logs, then retry. First launch may need the consented embedding download."))?
 }
 pub async fn open_target(target: &str, config: &Config) -> Result<()> {
     let args: Vec<String> = match target {
@@ -402,6 +410,28 @@ pub async fn open_target(target: &str, config: &Config) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn readiness_deadline_includes_slow_health_requests() {
+        use wiremock::{matchers::path, Mock, MockServer, ResponseTemplate};
+        let server = MockServer::start().await;
+        Mock::given(path("/health"))
+            .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(2)))
+            .mount(&server)
+            .await;
+        let config = Config {
+            port: server.address().port(),
+            ..Default::default()
+        };
+        let start = std::time::Instant::now();
+        let result = wait_ready_with_limit(
+            &reqwest::Client::builder().no_proxy().build().unwrap(),
+            &config,
+            Duration::from_millis(50),
+        )
+        .await;
+        assert!(result.unwrap_err().to_string().contains("6 minutes"));
+        assert!(start.elapsed() < Duration::from_secs(1));
+    }
     #[tokio::test]
     async fn unavailable_command_is_an_error() {
         assert!(run_docker(Path::new("/not/a/docker"), &["info"], 1)

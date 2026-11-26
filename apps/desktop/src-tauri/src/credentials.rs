@@ -102,11 +102,8 @@ impl Vault {
             .clone())
     }
     fn envelope(&self) -> Result<Envelope> {
-        if std::fs::symlink_metadata(&self.path)?
-            .file_type()
-            .is_symlink()
-            || std::fs::metadata(&self.path)?.len() > MAX_FILE
-        {
+        let metadata = std::fs::symlink_metadata(&self.path)?;
+        if !metadata.is_file() || metadata.len() > MAX_FILE {
             return Err(message(
                 "The saved credential vault is not a supported regular file.",
             ));
@@ -130,6 +127,9 @@ impl Vault {
     pub fn unlock(&mut self, password: &str) -> Result<()> {
         if self.unlocked() {
             return Ok(());
+        }
+        if password.len() > 1024 {
+            return Err(message("The HERMES password exceeds the 1024-byte limit."));
         }
         let envelope = self.envelope()?;
         let salt: [u8; 16] = envelope

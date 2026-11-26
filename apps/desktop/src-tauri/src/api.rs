@@ -107,26 +107,62 @@ pub async fn pull(
     )
     .await?;
     let mut stream = response.bytes_stream();
-    let mut buffer = Vec::new();
+    let mut decoder = PullDecoder::default();
     while let Some(chunk) = tokio::time::timeout(Duration::from_secs(180), stream.next())
         .await
         .map_err(|_| message("Model download stalled. Retry when the connection is available."))?
     {
-        buffer.extend_from_slice(&chunk?);
-        if buffer.len() > 1024 * 1024 {
-            return Err(message("Ollama sent an oversized progress event."));
-        }
-        while let Some(pos) = buffer.iter().position(|c| *c == b'\n') {
-            let line: Vec<u8> = buffer.drain(..=pos).collect();
-            if let Ok(value) = serde_json::from_slice::<Value>(&line) {
-                if value.get("error").is_some() {
-                    return Err(message("Ollama could not download this model. Check its name, storage, and connection."));
-                }
-                let _ = channel.send(value);
-            }
+        for value in decoder.push(&chunk?)? {
+            let _ = channel.send(value);
         }
     }
+    for value in decoder.finish()? {
+        let _ = channel.send(value);
+    }
     Ok(())
+}
+
+#[derive(Default)]
+struct PullDecoder {
+    pending: Vec<u8>,
+    completed: bool,
+}
+impl PullDecoder {
+    fn line(&mut self, line: &[u8]) -> Result<Option<Value>> {
+        if line.iter().all(u8::is_ascii_whitespace) {
+            return Ok(None);
+        }
+        let value: Value = serde_json::from_slice(line)?;
+        if value.get("error").is_some_and(|v| !v.is_null()) {
+            return Err(message(
+                "Ollama could not download this model. Check its name, storage, and connection.",
+            ));
+        }
+        self.completed |= value["status"] == "success";
+        Ok(Some(value))
+    }
+    fn push(&mut self, bytes: &[u8]) -> Result<Vec<Value>> {
+        self.pending.extend_from_slice(bytes);
+        if self.pending.len() > 1024 * 1024 {
+            return Err(message("Ollama sent an oversized progress event."));
+        }
+        let mut events = vec![];
+        while let Some(pos) = self.pending.iter().position(|c| *c == b'\n') {
+            let line: Vec<u8> = self.pending.drain(..=pos).collect();
+            if let Some(value) = self.line(&line)? {
+                events.push(value);
+            }
+        }
+        Ok(events)
+    }
+    fn finish(&mut self) -> Result<Vec<Value>> {
+        let pending = std::mem::take(&mut self.pending);
+        let events = self.line(&pending)?.into_iter().collect();
+        if !self.completed {
+            return Err(message("Model download ended before Ollama confirmed success. Retry the download; cached data is preserved."));
+        }
+        Ok(events)
+    }
 }
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Message {
@@ -167,8 +203,43 @@ pub fn chat_body(model: &str, messages: &[Message], knowledge: Option<&str>) -> 
 #[derive(Default)]
 pub struct SseDecoder {
     pending: Vec<u8>,
+    completed: bool,
+    answer: bool,
+    sources: bool,
 }
 impl SseDecoder {
+    fn line(&mut self, line: &[u8]) -> Result<Option<Value>> {
+        let text = std::str::from_utf8(line)
+            .map_err(|_| message("The backend returned invalid stream text."))?;
+        let Some(data) = text.trim().strip_prefix("data:") else {
+            return Ok(None);
+        };
+        let data = data.trim();
+        if data.is_empty() {
+            return Ok(None);
+        }
+        if data == "[DONE]" {
+            self.completed = true;
+            return Ok(None);
+        }
+        let event: Value = serde_json::from_str(data)?;
+        if event.get("error").is_some_and(|v| !v.is_null()) {
+            return Err(message(
+                "The model returned an error. Verify the selected model and inspect backend logs.",
+            ));
+        }
+        self.completed |= event["done"] == true
+            || event["choices"].as_array().is_some_and(|choices| {
+                choices
+                    .iter()
+                    .any(|c| c["finish_reason"].as_str().is_some_and(|s| !s.is_empty()))
+            });
+        self.answer |= event["choices"][0]["delta"]["content"]
+            .as_str()
+            .is_some_and(|s| !s.trim().is_empty());
+        self.sources |= event["sources"].as_array().is_some_and(|s| !s.is_empty());
+        Ok(Some(event))
+    }
     pub fn push(&mut self, bytes: &[u8]) -> Result<Vec<Value>> {
         self.pending.extend_from_slice(bytes);
         if self.pending.len() > 4 * 1024 * 1024 {
@@ -177,20 +248,27 @@ impl SseDecoder {
         let mut output = Vec::new();
         while let Some(pos) = self.pending.iter().position(|b| *b == b'\n') {
             let line: Vec<u8> = self.pending.drain(..=pos).collect();
-            let text = String::from_utf8_lossy(&line);
-            if let Some(data) = text.trim().strip_prefix("data:") {
-                let data = data.trim();
-                if data.is_empty() || data == "[DONE]" {
-                    continue;
-                }
-                let event: Value = serde_json::from_str(data)?;
-                if event.get("error").is_some() {
-                    return Err(message("The model returned an error. Verify the selected model and inspect backend logs."));
-                }
+            if let Some(event) = self.line(&line)? {
                 output.push(event);
             }
         }
         Ok(output)
+    }
+    pub fn finish(&mut self, require_sources: bool) -> Result<Vec<Value>> {
+        let pending = std::mem::take(&mut self.pending);
+        let events = self.line(&pending)?.into_iter().collect();
+        if !self.completed {
+            return Err(message("The response was interrupted before completion. Any partial text is incomplete; retry when the backend is ready."));
+        }
+        if !self.answer {
+            return Err(message(
+                "The model completed without answer text. Check the selected model and retry.",
+            ));
+        }
+        if require_sources && !self.sources {
+            return Err(message("No retrieved sources were returned for this knowledge question. Treat any answer as unverified; check indexing and the selected knowledge base."));
+        }
+        Ok(events)
     }
 }
 pub async fn stream_chat(
@@ -216,6 +294,9 @@ pub async fn stream_chat(
     }
     let mut stream = response.bytes_stream();
     let mut decoder = SseDecoder::default();
+    let require_sources = body["files"]
+        .as_array()
+        .is_some_and(|files| !files.is_empty());
     let mut total = 0usize;
     loop {
         let chunk = tokio::select! {
@@ -236,6 +317,11 @@ pub async fn stream_chat(
                 .map_err(|_| message("Chat window closed."))?;
         }
     }
+    for event in decoder.finish(require_sources)? {
+        channel
+            .send(event)
+            .map_err(|_| message("Chat window closed."))?;
+    }
     Ok(())
 }
 #[cfg(test)]
@@ -255,6 +341,84 @@ mod tests {
         }
         assert_eq!(all[0]["choices"][0]["delta"]["content"], "hé");
         assert!(d.push(b"data: {\"error\":\"secret\"}\n").is_err());
+    }
+    #[test]
+    fn rejects_incomplete_or_empty_chat_and_accepts_final_unterminated_line() {
+        let answer = b"data: {\"choices\":[{\"delta\":{\"content\":\"partial\"}}]}\n\n";
+        let mut interrupted = SseDecoder::default();
+        interrupted.push(answer).unwrap();
+        assert!(interrupted
+            .finish(false)
+            .unwrap_err()
+            .to_string()
+            .contains("interrupted"));
+        let mut empty = SseDecoder::default();
+        empty.push(b"data: [DONE]\n\n").unwrap();
+        assert!(empty.finish(false).is_err());
+        let mut complete = SseDecoder::default();
+        complete.push(answer).unwrap();
+        complete.push(b"data: [DONE]").unwrap();
+        complete.finish(false).unwrap();
+        let mut finish_reason = SseDecoder::default();
+        finish_reason.push(b"data: {\"choices\":[{\"delta\":{\"content\":\"answer\"},\"finish_reason\":\"stop\"}]}\n").unwrap();
+        finish_reason.finish(false).unwrap();
+    }
+    #[test]
+    fn knowledge_chat_requires_actual_source_events() {
+        let mut missing = SseDecoder::default();
+        missing
+            .push(b"data: {\"choices\":[{\"delta\":{\"content\":\"answer\"}}]}\n\ndata: [DONE]\n")
+            .unwrap();
+        assert!(missing
+            .finish(true)
+            .unwrap_err()
+            .to_string()
+            .contains("unverified"));
+        let mut grounded = SseDecoder::default();
+        grounded
+            .push(b"data: {\"sources\":[{\"source\":{\"name\":\"fixture.md\"}}]}\n")
+            .unwrap();
+        grounded
+            .push(b"data: {\"done\":true,\"choices\":[{\"delta\":{\"content\":\"answer\"}}]}\n")
+            .unwrap();
+        grounded.finish(true).unwrap();
+    }
+    #[test]
+    fn model_download_requires_success_and_rejects_invalid_progress() {
+        let mut partial = PullDecoder::default();
+        partial.push(b"{\"status\":\"downloading\"}\n").unwrap();
+        assert!(partial.finish().is_err());
+        assert!(PullDecoder::default().finish().is_err());
+        assert!(PullDecoder::default().push(b"not JSON\n").is_err());
+        assert!(PullDecoder::default()
+            .push(b"{\"error\":\"private failure\"}\n")
+            .is_err());
+        let mut complete = PullDecoder::default();
+        for byte in b"{\"status\":\"success\"}" {
+            complete.push(&[*byte]).unwrap();
+        }
+        assert_eq!(complete.finish().unwrap()[0]["status"], "success");
+    }
+    #[tokio::test]
+    async fn native_chat_rejects_http_success_with_truncated_stream() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/api/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(
+                "data: {\"choices\":[{\"delta\":{\"content\":\"cut short\"}}]}\n\n",
+                "text/event-stream",
+            ))
+            .mount(&server)
+            .await;
+        let result = stream_chat(
+            &Api::testing(server.uri(), "test-session".into()),
+            json!({}),
+            CancellationToken::new(),
+            tauri::ipc::Channel::new(|_| Ok(())),
+        )
+        .await;
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains("interrupted"), "Unexpected error: {error}");
     }
     #[tokio::test]
     async fn authenticated_chat_contract() {
