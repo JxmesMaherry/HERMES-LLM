@@ -1,6 +1,6 @@
 # Verification record
 
-Current password-based preview: **0.1.1**, 26 November 2026, Apple Silicon macOS. Source commits are now pushed to GitHub `main`; CI and a build-only installer workflow passed. The repository remains private and no tagged release has been published.
+Current password-based preview: **0.1.1**, 26 November 2026, Apple Silicon macOS. Source commits are now pushed to GitHub `main`; CI and a build-only installer workflow passed. The repository is now public and no tagged release has been published.
 
 ## Executed checks
 
@@ -50,7 +50,7 @@ See PASSWORDS.md, TESTING.md and RELEASE.md for repeatable procedures.
 
 ## GitHub and open-source preparation
 
-On 26 November 2026, the implementation history was pushed to [JxmesMaherry/HERMES-LLM](https://github.com/JxmesMaherry/HERMES-LLM). Contribution instructions, bug/feature templates, a PR template, a CI badge, repository description and discovery topics are in place. The MIT licence, hardware/model guide, password recovery guide and stress commands are included. The repository is still private; public visibility and the first tagged release remain future maintainer actions.
+On 26 November 2026, the implementation history was pushed to [JxmesMaherry/HERMES-LLM](https://github.com/JxmesMaherry/HERMES-LLM). Contribution instructions, bug/feature templates, a PR template, a CI badge, repository description and discovery topics are in place. The MIT licence, hardware/model guide, password recovery guide and stress commands are included. It was private for this initial verification. The maintainer made it public during the final review; the first tagged release remains a future maintainer action.
 
 A local review of 157 historical file versions before the first push found no textbook/document files, databases, vaults or common credential patterns. This was a targeted history check, not a guarantee that every possible sensitive value or vulnerability can be detected. Private application data, generated installers and model files are excluded from Git.
 
@@ -77,3 +77,13 @@ Local final-review results: 10 frontend tests, 7 stress tests, 6 publication tes
 The live native recovery/RAG/sync test passed again against isolated project `hermes-acceptance-e5ae95cd`, using only invented fixtures. Its container was stopped and its volume retained. Real password recovery, subsequent sign-in, identity/knowledge preservation, retrieval sources, unchanged/modified sync and declined/confirmed cleanup passed. Production textbooks and account credentials were not changed.
 
 The final publishing path is documented in [PUBLISHING-v0.1.1.md](PUBLISHING-v0.1.1.md). Notarization, clean-Mac acceptance and the other manual cases above remain explicit limits on the preview.
+
+The final [build-only workflow](https://github.com/JxmesMaherry/HERMES-LLM/actions/runs/45820823782) passed on `015ff41`, including both reusable CI jobs before packaging and all bundle/upload checks. Artifact `15116954336` is retained until 10 December 2026. A separate CI run exposed a startup test timing assumption: focus could arrive before the initial single-flight refresh completed. Commit `39f0a05` makes the test await startup, and [its complete CI run](https://github.com/JxmesMaherry/HERMES-LLM/actions/runs/45821179527) passed. Only the test changed between those commits; the packaged application source, dependencies and resources are identical.
+
+The reviewed artifact was downloaded and its ZIP digest matched GitHub's metadata. It contained exactly the installer and checksum. The DMG matched that checksum and mounted read-only; the mounted app passed ARM64 executable, frontend/resource, ad-hoc signature and version 0.1.1 checks. Its credential helper returned the expected protocol marker without launching the UI. The image was detached afterward. Files are retained under `.artifacts/github-45820823782/` and are ignored by Git. The reviewed installer SHA-256 is:
+
+```text
+8b78f36003debdc99e6c28791dad62818390cda07bd6d1b8cb87a941477bccaf
+```
+
+The final targeted history review covered 186 historical file versions and found no selected private-document/database/vault files or common credential patterns. The maintainer has made the repository public. No v0.1.1 tag or GitHub Release was created by the agent. The tag-triggered publication step has six mocked safety tests; its first real publication is still the maintainer's next step.

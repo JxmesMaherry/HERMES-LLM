@@ -10,6 +10,8 @@ The installer is ad-hoc signed, not Apple-notarized. Clean-Mac installation and 
 
 ## 2. Make the repository public
 
+If GitHub already shows **Public** beside the repository name, skip this step.
+
 Open [repository settings](https://github.com/JxmesMaherry/HERMES-LLM/settings), then **General → Danger Zone → Change repository visibility → Public**. Complete GitHub's confirmation for `JxmesMaherry/HERMES-LLM`. This exposes the source history and Actions history/logs. See [GitHub's visibility instructions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility).
 
 Open the repository in a signed-out/private browser window to confirm that the README, licence and contribution guide are visible.

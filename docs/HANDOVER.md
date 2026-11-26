@@ -39,7 +39,7 @@ docs/
 README.md, LICENSE, .gitignore, package.json, package-lock.json, rust-toolchain.toml
 ```
 
-Generated frontend assets, Rust targets, app/DMG files and native schemas are ignored by Git. The repository was initially empty; existing Git configuration and remote settings were preserved. Focused commits cover infrastructure, the desktop app, CI/DMG packaging, stress testing, public documentation and password recovery. These commits are now pushed to `main` on GitHub. The repository remains private and no release tag has been published.
+Generated frontend assets, Rust targets, app/DMG files and native schemas are ignored by Git. The repository was initially empty; existing Git configuration and remote settings were preserved. Focused commits cover infrastructure, the desktop app, CI/DMG packaging, stress testing, public documentation and password recovery. These commits are now pushed to `main` on GitHub. The repository is now public and no release tag has been published.
 
 ## Implemented
 
@@ -96,7 +96,7 @@ README.md now leads with installation steps and a Mac/model workload table. QUIC
 
 ## Remaining priorities
 
-1. Decide when to make the prepared repository public and publish the first tagged release; complete clean-Mac/account installation acceptance using TESTING.md.
+1. Publish the first tagged preview release after final verification; complete clean-Mac/account installation acceptance using TESTING.md.
 2. Complete controlled native picker/permission/restart/sleep/offline/backup acceptance and test broader PDF collections.
 3. Track and resolve upstream RustSec warnings; review advisories and licence notices before every release.
 4. Add Developer ID signing and notarization when credentials are available.

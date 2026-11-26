@@ -2,7 +2,7 @@
 
 The release workflow runs the complete reusable CI suite before building an Apple Silicon `.app` and `.dmg` using the official Tauri action on `macos-15`. `workflow_dispatch` builds an Actions artifact without publishing a release. A pushed `v*` tag uploads the verified DMG and SHA-256 file to a draft, checks that both attachments exist, then publishes the GitHub Release. Versions beginning with `0.` are marked as development prereleases. External Actions are pinned to reviewed commit hashes.
 
-A build-only run has passed on GitHub, and its downloaded installer has been verified. See [VERIFICATION.md](VERIFICATION.md) for the run and checksum. The repository is currently private and no release tag has been published. Publishing requires the repository owner’s explicit approval; do not push tags as part of ordinary development.
+A build-only run has passed on GitHub, and its downloaded installer has been verified. See [VERIFICATION.md](VERIFICATION.md) for the run and checksum. The repository is now public and no release tag has been published. Publishing requires the repository owner’s explicit approval; do not push tags as part of ordinary development.
 
 ## Local development distribution
 
