@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import App from "./App";
 import PasswordDialog from "./PasswordDialog";
 import AccountRecovery from "./AccountRecovery";
@@ -193,7 +199,11 @@ it("waits for a user-entered HERMES password and never unlocks on refresh", asyn
     name: "Unlock HERMES",
   });
   expect(bridge.unlock).not.toHaveBeenCalled();
-  fireEvent(window, new Event("focus"));
+  // The password banner can render before the initial single-flight refresh settles.
+  await act(async () => {});
+  await act(async () => {
+    fireEvent(window, new Event("focus"));
+  });
   await waitFor(() => expect(bridge.health).toHaveBeenCalledTimes(2));
   expect(bridge.unlock).not.toHaveBeenCalled();
   fireEvent.click(unlock);
