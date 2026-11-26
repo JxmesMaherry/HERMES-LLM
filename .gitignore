@@ -1,0 +1,26 @@
+node_modules/
+dist/
+target/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.idea/
+.vscode/
+coverage/
+.toolchains/
+.artifacts/
+*.dmg
+*.app/
+*.pem
+*.p12
+*.key
+local-data/
+
+# Generated native schemas and TypeScript cache
+apps/desktop/src-tauri/gen/
+*.tsbuildinfo
+*.sqlite
+*.sqlite3
+*.db

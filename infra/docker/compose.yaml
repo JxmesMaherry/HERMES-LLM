@@ -1,0 +1,43 @@
+name: hermes-llm
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.13.5
+    ports:
+      - "127.0.0.1:${HERMES_PORT:-3000}:8080"
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:?Start via HERMES or scripts/start.sh to load the Keychain secret}
+      WEBUI_AUTH: "true"
+      ENABLE_SIGNUP: "false"
+      ENABLE_API_KEY: "true"
+      ENABLE_OPENAI_API: "false"
+      ENABLE_OLLAMA_API: "true"
+      ENABLE_DIRECT_CONNECTIONS: "false"
+      ENABLE_PERSISTENT_CONFIG: "false"
+      ENABLE_VERSION_UPDATE_CHECK: "false"
+      ENABLE_COMMUNITY_SHARING: "false"
+      ENABLE_COMMUNITY_ACCESS: "false"
+      ENABLE_EVALUATION_ARENA_MODELS: "false"
+      ENABLE_WEB_SEARCH: "false"
+      RAG_EMBEDDING_ENGINE: ""
+      RAG_EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+      RAG_EMBEDDING_MODEL_AUTO_UPDATE: "false"
+      RAG_RERANKING_MODEL_AUTO_UPDATE: "false"
+      HF_HUB_OFFLINE: ${HERMES_HF_OFFLINE:-1}
+      DO_NOT_TRACK: "true"
+      SCARF_NO_ANALYTICS: "true"
+      ANONYMIZED_TELEMETRY: "false"
+    volumes:
+      - open-webui-data:/app/backend/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5)"]
+      interval: 15s
+      timeout: 8s
+      retries: 40
+      start_period: 120s
+volumes:
+  open-webui-data:
+    name: hermes-llm-open-webui-data
