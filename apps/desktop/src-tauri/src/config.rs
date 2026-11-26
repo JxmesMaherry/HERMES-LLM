@@ -116,30 +116,6 @@ pub fn credential(account: &str) -> Result<keyring::Entry> {
         message("macOS Keychain is unavailable. Unlock your login Keychain and retry.")
     })
 }
-pub fn token(port: u16) -> Result<String> {
-    credential(&format!("webui-token-{port}"))?
-        .get_password()
-        .map_err(|_| message("Sign in to your local Open WebUI account in Setup or Settings."))
-}
-pub fn backend_secret() -> Result<String> {
-    use rand::RngCore;
-    let entry = credential("backend-secret")?;
-    match entry.get_password() {
-        Ok(secret) => Ok(secret),
-        Err(keyring::Error::NoEntry) => {
-            let mut bytes = [0u8; 32];
-            rand::rngs::OsRng.fill_bytes(&mut bytes);
-            let secret: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
-            entry
-                .set_password(&secret)
-                .map_err(|_| message("Could not save the backend secret in Keychain."))?;
-            Ok(secret)
-        }
-        Err(_) => Err(message(
-            "Could not read the backend secret. Unlock your login Keychain.",
-        )),
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;

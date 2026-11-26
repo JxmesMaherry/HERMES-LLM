@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { bridge, errorText, singleFlight } from "./bridge";
-import { Busy } from "./components";
+import { Busy, Button } from "./components";
 import Dashboard from "./Dashboard";
 import Chat from "./Chat";
 import Knowledge from "./Knowledge";
@@ -194,6 +194,27 @@ export default function App() {
               : "Local backend offline"}
           </span>
         </div>
+        {health && !health.credentials_unlocked && (
+          <div className="credential-banner" role="status">
+            <ShieldCheck size={18} />
+            <span>
+              Saved credentials are locked. Unlock once to use them for this
+              session. Background checks never open Keychain prompts.
+            </span>
+            <Button
+              secondary
+              disabled={!!busy}
+              onClick={() =>
+                void run("Unlocking saved credentials…", async () => {
+                  await bridge.unlock();
+                  await refresh();
+                })
+              }
+            >
+              Unlock credentials
+            </Button>
+          </div>
+        )}
         {error && (
           <div role="alert" className="error-banner">
             <span>{error}</span>

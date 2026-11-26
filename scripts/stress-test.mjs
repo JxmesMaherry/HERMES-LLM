@@ -368,22 +368,33 @@ export async function runSuite(
 }
 function credential(port) {
   if (process.env.HERMES_STRESS_TOKEN) return process.env.HERMES_STRESS_TOKEN;
-  try {
-    return execFileSync(
+  const read = (account) =>
+    execFileSync(
       "/usr/bin/security",
       [
         "find-generic-password",
         "-s",
         "com.jxmesmaherry.hermesllm",
         "-a",
-        `webui-token-${port}`,
+        account,
         "-w",
       ],
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 15_000 },
     ).trim();
+  try {
+    let value;
+    try {
+      value = read("workspace-credentials-v1");
+    } catch (error) {
+      if (error.status !== 44) throw error;
+      return read(`webui-token-${port}`);
+    }
+    const token = JSON.parse(value).tokens?.[String(port)];
+    if (typeof token !== "string" || !token) throw new Error();
+    return token;
   } catch {
     throw new Error(
-      "Keychain access was denied, timed out, or no session exists. Sign in to HERMES and allow the trusted security helper, or supply HERMES_STRESS_TOKEN temporarily. No secret was changed.",
+      "Keychain access was denied, timed out, or no session exists. Unlock/sign in to HERMES and allow the trusted security helper, or supply HERMES_STRESS_TOKEN temporarily. No secret was changed.",
     );
   }
 }

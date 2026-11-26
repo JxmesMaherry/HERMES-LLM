@@ -1,5 +1,5 @@
 use crate::{
-    config::{self, Config},
+    config::Config,
     error::{message, Result},
 };
 use serde::Serialize;
@@ -28,6 +28,7 @@ pub struct Health {
     pub ollama: ServiceStatus,
     pub backend: ServiceStatus,
     pub authenticated: bool,
+    pub credentials_unlocked: bool,
     pub folder: ServiceStatus,
     pub data_dir: String,
 }
@@ -120,15 +121,21 @@ fn action_args(action: &str) -> Result<Vec<&'static str>> {
         _ => Err(message("Unsupported service action.")),
     }
 }
-pub async fn health(client: &reqwest::Client, config: &Config, root: &Path) -> Health {
+pub async fn health(
+    client: &reqwest::Client,
+    config: &Config,
+    root: &Path,
+    token: Option<String>,
+    credentials_unlocked: bool,
+) -> Health {
     let docker = docker_status(docker_path().as_deref()).await;
     let installed = Path::new("/Applications/Ollama.app").exists()
         || Path::new("/usr/local/bin/ollama").exists()
         || Path::new("/opt/homebrew/bin/ollama").exists();
     let ollama = ollama_status(client, "http://127.0.0.1:11434/api/tags", installed).await;
     let backend = backend_status(client, &config.base_url()).await;
-    let authenticated = match config::token(config.port) {
-        Ok(token) if backend.state == "running" => client
+    let authenticated = match token {
+        Some(token) if backend.state == "running" => client
             .get(format!("{}/api/v1/auths/", config.base_url()))
             .bearer_auth(token)
             .timeout(Duration::from_secs(4))
@@ -152,12 +159,68 @@ pub async fn health(client: &reqwest::Client, config: &Config, root: &Path) -> H
         ollama,
         backend,
         authenticated,
+        credentials_unlocked,
         folder,
         data_dir: root.display().to_string(),
     }
 }
 
-pub async fn lifecycle(root: &Path, config: &Config, action: &str) -> Result<String> {
+// Migration reads only our labelled container, never prints environment values,
+// and preserves the existing backend secret. Docker access is already a trust boundary.
+pub async fn running_backend_secret() -> Option<String> {
+    let docker = docker_path()?;
+    let output = run_docker(
+        &docker,
+        &[
+            "ps",
+            "--filter",
+            "label=com.docker.compose.project=hermes-llm",
+            "--filter",
+            "label=com.docker.compose.service=open-webui",
+            "--format",
+            "{{.ID}}",
+        ],
+        3,
+    )
+    .await
+    .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let ids = String::from_utf8(output.stdout).ok()?;
+    let id = ids.lines().next()?;
+    if id.is_empty() || !id.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return None;
+    }
+    let output = run_docker(
+        &docker,
+        &["inspect", "--format", "{{json .Config.Env}}", id],
+        3,
+    )
+    .await
+    .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let values: Vec<String> = serde_json::from_slice(&output.stdout).ok()?;
+    values.into_iter().find_map(|v| {
+        v.strip_prefix("WEBUI_SECRET_KEY=")
+            .filter(|s| s.len() >= 24 && s.len() <= 1024)
+            .map(str::to_owned)
+    })
+}
+
+pub async fn lifecycle(
+    root: &Path,
+    config: &Config,
+    action: &str,
+    secret: Option<String>,
+) -> Result<String> {
+    let secret = match action {
+        "start" | "restart" => secret
+            .ok_or_else(|| message("Unlock saved credentials before starting the backend."))?,
+        _ => "unused-for-stop-or-logs".into(),
+    };
     let docker = docker_path().ok_or_else(|| message("Install Docker Desktop first."))?;
     let args = action_args(action)?;
     let daemon = run_docker(&docker, &["info", "--format", "{{.ServerVersion}}"], 10).await?;
@@ -200,7 +263,7 @@ pub async fn lifecycle(root: &Path, config: &Config, action: &str) -> Result<Str
             "HERMES_HF_OFFLINE",
             if config.allow_downloads { "0" } else { "1" },
         )
-        .env("WEBUI_SECRET_KEY", config::backend_secret()?)
+        .env("WEBUI_SECRET_KEY", secret)
         .kill_on_drop(true);
     // First pull can take several minutes; never retry forever.
     let output = tokio::time::timeout(Duration::from_secs(900), cmd.output()).await.map_err(|_| message("Docker exceeded 15 minutes. Check Docker Desktop and retry; cached downloads are preserved."))??;

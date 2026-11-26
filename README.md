@@ -88,3 +88,5 @@ Read [development](docs/DEVELOPMENT.md), [architecture](docs/ARCHITECTURE.md), [
 Use focused commits, include tests for API/file/deletion changes, run the documented checks, and keep private documents, credentials and local data out of Git. [MIT](LICENSE) covers HERMES code. [Open WebUI](https://github.com/open-webui/open-webui), [Ollama](https://github.com/ollama/ollama), Docker and downloaded models retain their own terms. Open WebUI’s original branding is preserved. See [third-party notices](docs/THIRD-PARTY.md).
 
 **Screenshot placeholder:** a public native-window screenshot will be added after capturing a clean demonstration workspace without private chats or documents.
+
+If saved credentials are locked, click **Unlock credentials** once. HERMES keeps them in memory for the session and does not ask again during background checks or chat. A changed ad-hoc build can need fresh macOS approval. Your documents and backend data remain intact.

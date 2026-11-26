@@ -18,6 +18,7 @@ export interface Health {
   backend: ServiceStatus;
   folder: ServiceStatus;
   authenticated: boolean;
+  credentials_unlocked: boolean;
   data_dir: string;
 }
 export interface Model {

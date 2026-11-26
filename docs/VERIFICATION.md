@@ -12,11 +12,11 @@ Date: 26 November 2026. Actual execution on an Apple Silicon Mac with Docker Des
 | Stress-tool contract tests | 7 passed: input limits, RAG request format, bounded concurrency, early stopping, metrics privacy, SSE/UTF-8/source checks and timeouts |
 | Stress-tool live smoke | 1 real Ollama request passed, 32-token limit, 2,084 ms total and 1,433 ms to first visible answer text; a smoke check, not a representative benchmark |
 | Stress-tool dry runs | Ollama and selected-knowledge plans succeeded without requests or Keychain reads |
-| Frontend tests | 6 passed: overlapping refresh protection, honest prerequisite states, setup gating, deletion consent, streamed chat/history and unavailable services |
+| Frontend tests | 7 passed: credential-unlock gating, overlapping refresh protection, honest prerequisite states, setup gating, deletion consent, streamed chat/history and unavailable services |
 | Production frontend build | Passed, bundled local assets |
 | Rust formatting | `cargo fmt --check` passed |
 | Rust lint | `cargo clippy --locked --all-targets -- -D warnings` passed |
-| Default Rust suite | 21 passed; 1 live test deliberately ignored by default |
+| Default Rust suite | 27 passed; 1 live test deliberately ignored by default |
 | Live Rust acceptance | Separately executed ignored test passed against real Open WebUI v0.13.5 and native Qwen |
 | Actual document retrieval | Public fixture was indexed; streamed answer included `AMBER-7319` without that code in the prompt |
 | Live incremental sync | First addition, unchanged second preview, modified replacement, declined deletion and confirmed cleanup all passed |
@@ -56,3 +56,9 @@ A CLI bootstrap check in `/tmp/HERMES CLI verification with spaces` created conf
 ## Local commit handover
 
 The owner subsequently requested focused development commits. Local commits now cover backend infrastructure, desktop/chat/RAG, CI/DMG packaging, bounded stress testing, and the public documentation. No remote push, visibility change or release publication was performed.
+
+## Keychain loop regression
+
+The reported repeated prompts came from reading Keychain during health polling and each API/service operation. The fix uses a single protected vault with a memory cache. Startup lookup explicitly suppresses authentication UI, denied access remains locked until a user retry, and Stop/log inspection uses no secret. Added native regressions exercise 100 repeated cached/locked checks, one-time migration, sign-out persistence and corrupt-data preservation; a UI regression verifies focus/refresh does not invoke Unlock. macOS approval of the migrated vault itself remains a user step; no OS password was entered or stored by the agent.
+
+Native verification after the fix: the old UI was quit and the updated `.app` reopened with its selected model/folder preserved. Ollama, Docker and Open WebUI reported running. Two status refreshes completed without any Keychain dialog; the window remained usable with an explicit Unlock credentials button. The user can now perform the one-time OS approval. Docker and the knowledge volume were not stopped, reset or recreated.

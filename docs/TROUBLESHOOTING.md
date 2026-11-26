@@ -9,6 +9,7 @@
 | Port conflict | Stop HERMES’s backend. Choose an unused port 1024–65535 in Settings, Save, then Start. The original volume is retained. |
 | Backend health fails / first start stalls | Inspect Settings → View logs or `scripts/logs.sh`. Check disk space, Docker memory and image download access. Readiness stops after a bounded wait. |
 | Embedding load fails offline | The cache/image may lack MiniLM. Explicitly allow embedding downloads, then Restart. Disable downloads again for offline use. |
+| Repeated Keychain prompts in an older build | Quit that HERMES window and open the updated build. Click Unlock credentials once if needed. The updated app caches credentials and never retries Keychain from background refreshes; no books or volumes need resetting. |
 | CLI Keychain access denied | Unlock the login Keychain and review the normal macOS request from the trusted `/usr/bin/security` helper. Retry bootstrap only after access is allowed; HERMES does not replace an existing secret on access failure. |
 | Chat rejected / token expired | Sign in again in Settings. API requests always require authentication. |
 | Model unavailable | Refresh and choose a model listed by Ollama, or explicitly download one. |

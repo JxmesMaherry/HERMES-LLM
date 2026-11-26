@@ -17,7 +17,7 @@ apps/desktop/
   src-tauri/
     Cargo.toml, Cargo.lock, build.rs, tauri.conf.json
     capabilities/main.json, icons/
-    src/lib.rs, main.rs, config.rs, services.rs, api.rs, sync.rs, error.rs
+    src/lib.rs, main.rs, config.rs, services.rs, api.rs, sync.rs, error.rs, credentials.rs
 infra/docker/
   compose.yaml, .env.example
 scripts/
@@ -81,7 +81,7 @@ DMG output: `apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/d
 
 ## Results and limits
 
-See VERIFICATION.md for exact executed checks: frontend build/lint/typecheck, 6 frontend tests, 7 stress-tool contract tests, 21 default Rust tests, a separately passed real chat/RAG/sync test, Compose validation, native launch and local `.app`/DMG generation. npm audit reported no vulnerabilities; RustSec exited 0 with three upstream warnings.
+See VERIFICATION.md for exact executed checks: frontend build/lint/typecheck, 7 frontend tests, 7 stress-tool contract tests, 27 default Rust tests, a separately passed real chat/RAG/sync test, Compose validation, native launch and local `.app`/DMG generation. npm audit reported no vulnerabilities; RustSec exited 0 with three upstream warnings.
 
 The release workflow is implemented but has not run on GitHub. CLI bootstrap requires allowing the standard macOS Keychain request from the trusted `security` helper; that access was denied during verification, and the full CLI secret-read path remains a manual check. The app is ad-hoc signed, not notarized. Desktop and Open WebUI browser chat histories are separate. Sync is manual, OCR is not bundled, empty directories are deliberately retained, and concurrent upstream edits are not an atomic transaction. A crash after upload but before cleanup may require inspection/retry. Limits are 5,000 documents, 20,000 entries, and a configurable maximum of 50 MB per document.
 
@@ -96,3 +96,7 @@ README.md now leads with installation steps and a Mac/model workload table. QUIC
 3. Track and resolve upstream RustSec warnings; review advisories and licence notices before every release.
 4. Add Developer ID signing and notarization when credentials are available.
 5. Improve interruption reconciliation and concurrent KB edit handling, then consider optional file watching, OCR, Intel builds and an authenticated updater.
+
+## Keychain prompt-loop fix
+
+A separate fix commit consolidates secrets into one protected vault, suppresses all startup/background authentication dialogs, caches credentials for the session and provides explicit Unlock/retry. Migration preserves the existing backend secret and indexed data. Tests cover 100 repeated cached checks, denied-access latching, migration, sign-out persistence, corrupt credentials and UI refreshes without automatic unlock.

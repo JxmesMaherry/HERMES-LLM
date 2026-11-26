@@ -1261,3 +1261,21 @@ hr {
     scroll-behavior: auto !important;
   }
 }
+
+.credential-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 36px;
+  background: #253528;
+  border-bottom: 1px solid #405844;
+  color: #c6ddbe;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.credential-banner > span {
+  flex: 1;
+}
+.credential-banner > svg {
+  flex-shrink: 0;
+}

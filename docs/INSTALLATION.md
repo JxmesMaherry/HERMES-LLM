@@ -25,3 +25,5 @@ For retrieval verification, copy `tests/fixtures/hermes-facts.md` into a tempora
 The project and volume identities stay stable. Stop the backend before replacing the app or changing ports. Back up both HERMES’s application data directory and the Docker data volume. A newer image may migrate its database; never downgrade blindly. No migration or reset deletes source documents.
 
 The app requires its pinned backend API version. Reusing a different Open WebUI installation is not supported as a substitute for the managed service. Settings exposes the local port and original Open WebUI interface for inspection.
+
+If saved credentials are locked, click **Unlock credentials** once. HERMES keeps them in memory for the session and does not ask again during background checks or chat. A changed ad-hoc build can need fresh macOS approval. Your documents and backend data remain intact.

@@ -1,22 +1,34 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import App from "./App";
 import Dashboard from "./Dashboard";
 import Setup, { type Controls } from "./Setup";
 import Knowledge from "./Knowledge";
 import Chat from "./Chat";
 import { bridge } from "./bridge";
 import type { Config, Health, StreamEvent } from "./types";
-vi.mock("./bridge", () => ({
-  bridge: {
-    history: vi.fn(async () => []),
-    saveHistory: vi.fn(async () => {}),
-    chat: vi.fn(),
-    preview: vi.fn(),
-    sync: vi.fn(),
-    open: vi.fn(),
-  },
-  errorText: (e: unknown) => String(e),
-}));
+vi.mock("./bridge", async () => {
+  const actual = await vi.importActual<typeof import("./bridge")>("./bridge");
+  return {
+    ...actual,
+    bridge: {
+      ...actual.bridge,
+      config: vi.fn(),
+      health: vi.fn(),
+      models: vi.fn(async () => []),
+      knowledge: vi.fn(async () => []),
+      lastSync: vi.fn(async () => ({ attempt: null, success: null })),
+      unlock: vi.fn(async () => {}),
+      history: vi.fn(async () => []),
+      saveHistory: vi.fn(async () => {}),
+      chat: vi.fn(),
+      preview: vi.fn(),
+      sync: vi.fn(),
+      open: vi.fn(),
+    },
+    errorText: (e: unknown) => String(e),
+  };
+});
 const config: Config = {
   port: 3000,
   model: "qwen3:4b-instruct",
@@ -32,6 +44,7 @@ const health: Health = {
   ollama: { state: "missing", detail: "Install Ollama" },
   backend: { state: "failed", detail: "Health check failed" },
   authenticated: false,
+  credentials_unlocked: true,
   folder: { state: "ready", detail: "/tmp/My Documents" },
   data_dir: "/tmp/hermes",
 };
@@ -156,4 +169,25 @@ describe("chat integration", () => {
     );
     expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
   });
+});
+
+it("does not unlock Keychain on render or repeated background refreshes", async () => {
+  vi.mocked(bridge.config).mockResolvedValue({
+    ...config,
+    setup_complete: true,
+  });
+  vi.mocked(bridge.health).mockResolvedValue({
+    ...health,
+    credentials_unlocked: false,
+  });
+  render(<App />);
+  const unlock = await screen.findByRole("button", {
+    name: "Unlock credentials",
+  });
+  expect(bridge.unlock).not.toHaveBeenCalled();
+  fireEvent(window, new Event("focus"));
+  await waitFor(() => expect(bridge.health).toHaveBeenCalledTimes(2));
+  expect(bridge.unlock).not.toHaveBeenCalled();
+  fireEvent.click(unlock);
+  await waitFor(() => expect(bridge.unlock).toHaveBeenCalledTimes(1));
 });

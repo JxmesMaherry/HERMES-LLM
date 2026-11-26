@@ -21,6 +21,7 @@ const call = <T>(command: string, args?: Record<string, unknown>) => {
   return invoke<T>(command, args);
 };
 export const bridge = {
+  unlock: () => call<void>("unlock_credentials"),
   config: () => call<Config>("get_config"),
   save: (settings: Config) => call<Config>("save_config", { settings }),
   health: () => call<Health>("health"),

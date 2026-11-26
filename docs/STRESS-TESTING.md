@@ -61,7 +61,7 @@ Concurrent HTTP clients may be queued by Ollama. The script does not change `OLL
 
 ## Authentication
 
-The default is the HERMES session in macOS Keychain, account `webui-token-<port>`. macOS can ask whether to allow the trusted `/usr/bin/security` helper to read that entry. The lookup times out after 15 seconds instead of waiting indefinitely. Denied access changes no secret.
+The default is the HERMES session inside the protected `workspace-credentials-v1` Keychain entry. The runner falls back to `webui-token-<port>` only for a legacy installation with no unified vault. macOS can ask whether to allow the trusted `/usr/bin/security` helper to read that entry. The lookup times out after 15 seconds instead of waiting indefinitely. Denied access changes no secret.
 
 If you prefer a temporary token, obtain a **local Open WebUI** API key from its Account settings (administrator API-key settings may need enabling). In the standard macOS zsh shell:
 

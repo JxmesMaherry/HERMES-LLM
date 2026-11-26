@@ -26,6 +26,15 @@ load_config() {
 }
 load_secret() {
   [ "$(uname -s)" = Darwin ] || fail 'The source scripts currently require macOS Keychain.'
+  if keychain_payload="$(/usr/bin/security find-generic-password -s com.jxmesmaherry.hermesllm -a workspace-credentials-v1 -w 2>/dev/null)"; then
+    WEBUI_SECRET_KEY="$(node -e 'let input="";process.stdin.on("data",c=>input+=c);process.stdin.on("end",()=>{try{const value=JSON.parse(input).backend_secret;if(typeof value!=="string"||value.length<24)throw new Error();process.stdout.write(value);}catch{process.exit(1);}})' <<< "$keychain_payload")" || fail 'Saved credentials could not be read; nothing was replaced.'
+    unset keychain_payload
+    export WEBUI_SECRET_KEY
+    return
+  else
+    keychain_status=$?
+    [ "$keychain_status" -eq 44 ] || fail 'Keychain access was denied. Allow the trusted security helper when ready, then rerun this command.'
+  fi
   if WEBUI_SECRET_KEY="$(/usr/bin/security find-generic-password -s com.jxmesmaherry.hermesllm -a backend-secret -w 2>/dev/null)"; then :
   else
     keychain_status=$?

@@ -46,3 +46,5 @@ Open **Library → Preview changes → Sync now**. Wait for indexing and review 
 Use your own PDF, TXT or Markdown files. A scanned PDF may require external OCR. Manual sync picks up later changes; removing indexed content requires explicit confirmation. Originals remain on your Mac.
 
 Closing HERMES leaves services running. Use **Settings → Stop** to stop the backend without deleting data. For help, read [troubleshooting](TROUBLESHOOTING.md), [hardware guidance](HARDWARE.md) and [privacy/backup information](SECURITY.md).
+
+If saved credentials are locked, click **Unlock credentials** once. HERMES keeps them in memory for the session and does not ask again during background checks or chat. A changed ad-hoc build can need fresh macOS approval. Your documents and backend data remain intact.

@@ -1,5 +1,6 @@
 mod api;
 mod config;
+mod credentials;
 mod error;
 mod services;
 mod sync;
@@ -10,7 +11,12 @@ use crate::{
     error::{message, Result},
 };
 use serde_json::{json, Value};
-use std::{collections::HashMap, path::PathBuf, sync::Mutex, time::Duration};
+use std::{
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use tokio_util::sync::CancellationToken;
@@ -18,6 +24,7 @@ use tokio_util::sync::CancellationToken;
 pub struct AppState {
     root: PathBuf,
     config: Mutex<Config>,
+    vault: Arc<Mutex<credentials::Vault>>,
     client: reqwest::Client,
     plan: Mutex<Option<sync::Plan>>,
     chats: Mutex<HashMap<String, CancellationToken>>,
@@ -28,7 +35,13 @@ impl AppState {
         self.config.lock().expect("config lock").clone()
     }
     fn api(&self) -> Result<Api> {
-        Api::new(self.client.clone(), &self.settings())
+        let config = self.settings();
+        let token = self
+            .vault
+            .lock()
+            .expect("credential cache lock")
+            .token(config.port)?;
+        Ok(Api::new(self.client.clone(), &config, token))
     }
 }
 
@@ -57,7 +70,42 @@ async fn save_config(state: State<'_, AppState>, mut settings: Config) -> Result
 }
 #[tauri::command]
 async fn health(state: State<'_, AppState>) -> Result<services::Health> {
-    Ok(services::health(&state.client, &state.settings(), &state.root).await)
+    let config = state.settings();
+    let (token, unlocked) = state
+        .vault
+        .try_lock()
+        .map(|vault| (vault.token(config.port).ok(), vault.unlocked()))
+        .unwrap_or((None, false));
+    Ok(services::health(&state.client, &config, &state.root, token, unlocked).await)
+}
+async fn ensure_unlocked(state: &AppState) -> Result<()> {
+    if state
+        .vault
+        .lock()
+        .expect("credential cache lock")
+        .unlocked()
+    {
+        return Ok(());
+    }
+    let port = state.settings().port;
+    let running_secret = services::running_backend_secret().await;
+    let vault = state.vault.clone();
+    tokio::task::spawn_blocking(move || {
+        vault
+            .lock()
+            .expect("credential cache lock")
+            .unlock(port, running_secret)
+    })
+    .await
+    .map_err(|_| message("Credential unlock was interrupted. Click Unlock to retry."))?
+}
+#[tauri::command]
+async fn unlock_credentials(state: State<'_, AppState>) -> Result<()> {
+    let _guard = state
+        .operation
+        .try_lock()
+        .map_err(|_| message("Wait for the current operation before unlocking."))?;
+    ensure_unlocked(&state).await
 }
 #[tauri::command]
 async fn backend_action(state: State<'_, AppState>, action: String) -> Result<String> {
@@ -66,7 +114,19 @@ async fn backend_action(state: State<'_, AppState>, action: String) -> Result<St
         .try_lock()
         .map_err(|_| message("A backend or sync operation is already running."))?;
     let config = state.settings();
-    let output = services::lifecycle(&state.root, &config, &action).await?;
+    let secret = if action == "start" || action == "restart" {
+        ensure_unlocked(&state).await?;
+        Some(
+            state
+                .vault
+                .lock()
+                .expect("credential cache lock")
+                .backend_secret()?,
+        )
+    } else {
+        None
+    };
+    let output = services::lifecycle(&state.root, &config, &action, secret).await?;
     if action == "start" || action == "restart" {
         services::wait_ready(&state.client, &config).await?;
     }
@@ -83,15 +143,39 @@ async fn authenticate(
     password: String,
     create: bool,
 ) -> Result<()> {
-    api::authenticate(&state.client, &state.settings(), &email, &password, create).await
+    let _guard = state
+        .operation
+        .try_lock()
+        .map_err(|_| message("Wait for the current operation before signing in."))?;
+    ensure_unlocked(&state).await?;
+    let config = state.settings();
+    let token = api::authenticate(&state.client, &config, &email, &password, create).await?;
+    let vault = state.vault.clone();
+    tokio::task::spawn_blocking(move || {
+        vault
+            .lock()
+            .expect("credential cache lock")
+            .set_token(config.port, Some(token))
+    })
+    .await
+    .map_err(|_| message("Could not finish saving the local session."))?
 }
 #[tauri::command]
-fn sign_out(state: State<'_, AppState>) -> Result<()> {
-    let entry = config::credential(&format!("webui-token-{}", state.settings().port))?;
-    match entry.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(_) => Err(message("Could not remove the session from Keychain.")),
-    }
+async fn sign_out(state: State<'_, AppState>) -> Result<()> {
+    let _guard = state
+        .operation
+        .try_lock()
+        .map_err(|_| message("Wait for the current operation before signing out."))?;
+    let port = state.settings().port;
+    let vault = state.vault.clone();
+    tokio::task::spawn_blocking(move || {
+        vault
+            .lock()
+            .expect("credential cache lock")
+            .set_token(port, None)
+    })
+    .await
+    .map_err(|_| message("Could not finish signing out."))?
 }
 #[tauri::command]
 async fn list_models(state: State<'_, AppState>) -> Result<Value> {
@@ -334,6 +418,9 @@ pub fn run() {
             app.manage(AppState {
                 root,
                 config: Mutex::new(settings),
+                vault: Arc::new(Mutex::new(credentials::Vault::restore_silently(
+                    credentials::Keychain,
+                ))),
                 client,
                 plan: Mutex::new(None),
                 chats: Mutex::new(HashMap::new()),
@@ -343,6 +430,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_config,
+            unlock_credentials,
             save_config,
             health,
             backend_action,

@@ -28,12 +28,12 @@ impl Api {
         }
     }
 
-    pub fn new(client: reqwest::Client, config: &Config) -> Result<Self> {
-        Ok(Self {
+    pub fn new(client: reqwest::Client, config: &Config, token: String) -> Self {
+        Self {
             client,
             base: config.base_url(),
-            token: config::token(config.port)?,
-        })
+            token,
+        }
     }
     pub fn get(&self, path: &str) -> reqwest::RequestBuilder {
         self.client
@@ -70,7 +70,7 @@ pub async fn authenticate(
     email: &str,
     password: &str,
     create: bool,
-) -> Result<()> {
+) -> Result<String> {
     if !email.contains('@') || email.len() > 254 || password.is_empty() || password.len() > 1024 {
         return Err(message("Enter a valid email and password."));
     }
@@ -84,10 +84,7 @@ pub async fn authenticate(
     let token = response["token"]
         .as_str()
         .ok_or_else(|| message("Sign-in did not return a token. Check the local account."))?;
-    config::credential(&format!("webui-token-{}", config.port))?
-        .set_password(token)
-        .map_err(|_| message("Could not store the session in Keychain."))?;
-    Ok(())
+    Ok(token.to_owned())
 }
 pub async fn models(client: &reqwest::Client) -> Result<Value> {
     Api::json(client.get("http://127.0.0.1:11434/api/tags")).await
