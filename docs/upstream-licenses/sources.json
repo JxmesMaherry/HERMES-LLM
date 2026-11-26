@@ -1,0 +1,82 @@
+[
+  {
+    "package": "alloc-stdlib-0.3.0",
+    "file": "LICENSE",
+    "source": "https://raw.githubusercontent.com/dropbox/rust-alloc-no-stdlib/0a81fd6928ea3b33c8cd484aa4575d50ffb98012/LICENSE"
+  },
+  {
+    "package": "block2-0.6.2",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/b4167b582b2f75f9a1be75495c41b765344fd03c/LICENSE.md"
+  },
+  {
+    "package": "dispatch2-0.3.1",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/8852b424193ca41602281b3d7540d7c8ed51e49a/LICENSE.md"
+  },
+  {
+    "package": "objc2-0.6.5",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/d7d2fa23ceaa5e6096c923b081040e5d81b3b9df/LICENSE.md"
+  },
+  {
+    "package": "objc2-app-kit-0.3.2",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md"
+  },
+  {
+    "package": "objc2-core-foundation-0.3.2",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md"
+  },
+  {
+    "package": "objc2-core-graphics-0.3.2",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md"
+  },
+  {
+    "package": "objc2-encode-4.1.0",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/8d214f5477365ffcbcbb7de058c86ed9a518efb7/LICENSE.md"
+  },
+  {
+    "package": "objc2-exception-helper-0.1.1",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/8d214f5477365ffcbcbb7de058c86ed9a518efb7/LICENSE.md"
+  },
+  {
+    "package": "objc2-foundation-0.3.2",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md"
+  },
+  {
+    "package": "objc2-io-surface-0.3.2",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md"
+  },
+  {
+    "package": "objc2-quartz-core-0.3.2",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md"
+  },
+  {
+    "package": "objc2-web-kit-0.3.2",
+    "file": "LICENSE.md",
+    "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md"
+  },
+  {
+    "package": "selectors-0.38.0",
+    "file": "MPL-2.0.txt",
+    "source": "https://www.mozilla.org/media/MPL/2.0/index.txt"
+  },
+  {
+    "package": "tauri-plugin-2.7.4",
+    "file": "LICENSE-MIT",
+    "source": "https://raw.githubusercontent.com/tauri-apps/tauri/9319e539f34237035cb4693bed9246660bc0a926/LICENSE-MIT"
+  },
+  {
+    "package": "tauri-plugin-2.7.4",
+    "file": "LICENSE-APACHE-2.0",
+    "source": "https://raw.githubusercontent.com/tauri-apps/tauri/9319e539f34237035cb4693bed9246660bc0a926/LICENSE-APACHE-2.0"
+  }
+]

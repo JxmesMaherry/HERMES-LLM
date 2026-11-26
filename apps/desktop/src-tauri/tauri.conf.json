@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "HERMES-LLM",
+  "version": "0.1.0",
+  "identifier": "com.jxmesmaherry.hermesllm",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "HERMES-LLM",
+        "width": 1200,
+        "height": 820,
+        "minWidth": 820,
+        "minHeight": 620
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; font-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Private AI, on your Mac.",
+    "copyright": "Copyright \u00a9 2026 HERMES-LLM contributors",
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.icns"
+    ],
+    "resources": {
+      "../../../infra/docker/compose.yaml": "infra/compose.yaml",
+      "../../../docs/THIRD-PARTY-LICENSES.txt": "THIRD-PARTY-LICENSES.txt",
+      "../../../LICENSE": "LICENSE"
+    },
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "signingIdentity": "-",
+      "hardenedRuntime": true
+    }
+  }
+}
